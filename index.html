@@ -1,56 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Largest Database of Auto Parts in Nigeria</title>
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Manny Autos — Precision spare parts</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="home.css">
+
+  <!-- Google font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header>
-   <div class="logo-container">
-    <a>
-     <img src="download.jpeg">
-    </a>
-   </div>
-   <div>
-    <h1>The largest database of auto parts in Nigeria</h1>
-    <p class="subheader">
-      Find <span class="typing" data-words='["information", "pictures", "sellers"]'></span> of any auto parts
-    </p>
-   </div>
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-inner">
+      <div class="logo">
+        <!-- Use your provided logo image here -->
+        <img src="logo.jpg" alt="Manny Autos logo">
+      </div>
+
+      <nav class="nav">
+        <ul class="nav-links">
+          <li><a href="index.html" class="nav-link">Home</a></li>
+          <li><a href="search.html" class="nav-link">Search</a></li>
+          <li><a href="store.html" class="nav-link">Store</a></li>
+        </ul>
+
+        <!-- Hamburger button (visible on small screens) -->
+        <button class="hamburger" aria-label="Open menu" aria-expanded="false">
+          <!-- inline SVG hamburger -->
+          <svg width="28" height="18" viewBox="0 0 28 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <rect width="28" height="2" rx="1" fill="#0B3B6F"></rect>
+            <rect y="8" width="28" height="2" rx="1" fill="#0B3B6F"></rect>
+            <rect y="16" width="28" height="2" rx="1" fill="#0B3B6F"></rect>
+          </svg>
+        </button>
+      </nav>
+    </div>
   </header>
 
-  <section class="search-section">
+  <!-- Mobile sidebar (initially hidden; JS can toggle class .open to show) -->
+  <aside class="mobile-sidebar" id="mobileSidebar" aria-hidden="true">
+    <div class="mobile-sidebar-inner">
+      <button class="mobile-close" aria-label="Close menu">
+        <!-- inline SVG X -->
+        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2 L18 18 M18 2 L2 18" stroke="#0B3B6F" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
 
-    <div class="search-box">
-      <i class="fas fa-search"></i>
-      <span class="search-label">
-       Search by
-      </span>
-      <div class="divider"></div>
-      <input type="text" id="searchInput" placeholder="Type here..." />
+      <ul class="mobile-nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="search.html">Search</a></li>
+        <li><a href="store.html">Store</a></li>
+      </ul>
     </div>
-  </section>
-  
-  <section id="results-section"></section>
-  
-  <!-- Info Modal -->
-<div id="infoModal" class="modal-overlay">
-  <div class="modal-content">
-    <h3>Quick Tip</h3>
-    <p>
-      You can click each item to read more information about the auto parts,
-      or you can buy the auto part from available stores by clicking the
-      <strong>Place Order</strong> button.
-    </p>
-    <button id="closeModalBtn">OK</button>
-  </div>
-</div>
+  </aside>
 
-  <!-- Import main module -->
-  <script type="module" src="main.js"></script>
+  <!-- Hero -->
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <figure class="flyer">
+          <img src="flyer.jpg" alt="Manny Autos flyer">
+        </figure>
+
+        <div class="hero-copy">
+          <h1>Manny Autos</h1>
+          <h2 class="tagline">Precision spare parts</h2>
+
+          <p class="lead">
+            The largest, most reliable parts database for car owners and mechanics in Nigeria.
+            Search parts by name, street name, use or keyword — view pictures, compatibility and contact verified sellers directly.
+          </p>
+
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="search.html">Find Auto Parts</a>
+            <a class="btn btn-outline" href="store.html">Visit Store</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>© <span id="year"></span> Manny Autos — All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- small inline script to update year (optional, harmless) -->
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
