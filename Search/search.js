@@ -82,7 +82,6 @@ function filterYearOptions(b, m){
 
 function showSideBar(){
  sideBar.style.right = "0%"
- console.log("Should be open!")
 }
 
 function closeSideBar(){

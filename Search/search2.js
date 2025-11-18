@@ -1,4 +1,4 @@
-// search2.js (corrected)
+// search2.js (takes care of the search functionality)
 // =============================
 // Pagination added: 10 results per page
 // Structure: top = vars, middle = functions, end = event listeners

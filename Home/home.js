@@ -1,4 +1,5 @@
 // home.js
+/*
 document.addEventListener('DOMContentLoaded', () => {
   // --- Active nav highlighting (page-based)
   (function highlightNav() {
@@ -56,3 +57,19 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebar.addEventListener('click', (e) => e.stopPropagation());
   })();
 });
+*/
+
+const sideBar = document.querySelector("#mobileSidebar")
+const hamburger = document.querySelector(".hamburger")
+const closeButton = document.querySelector('.mobile-close')
+
+function showSideBar(){
+ sideBar.style.right = "0%"
+}
+
+function closeSideBar(){
+ sideBar.style.right = "-100%"
+}
+
+hamburger.addEventListener("click", showSideBar)
+closeButton.addEventListener("click", closeSideBar)
