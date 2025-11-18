@@ -1,20 +1,32 @@
+// search2.js (corrected)
+// =============================
+// Pagination added: 10 results per page
+// Structure: top = vars, middle = functions, end = event listeners
+// =============================
+
 /* ============================
    Top: Variable declarations
    ============================ */
 
 import { autoParts } from "./data.js"; // ensure your data.js exports autoParts exactly as given
 
-// Selectors (page elements)
+// Config
+const PAGE_SIZE = 10; // <-- pagination: 10 results per page
+const WHATSAPP_PHONE = "+237697436198"; // keep your number here or leave empty
+const INSTRUCTION_MODAL_DELAY_MS = 3000; // show tip modal N ms after a search
+
+// DOM selectors (queried once)
 const searchInput = document.querySelector(".search-input");
 const searchButton = document.querySelector(".btn-primary");
+// sessionStorage key to remember modal display for the current browser session
+const INSTRUCTION_SHOWN_KEY = "manny_instruction_shown_session";
 
-// Results container - create if missing
+// Results container - create if missing (same logic as your working file)
 let resultsSection = document.getElementById("results-section");
 if (!resultsSection) {
   const container = document.createElement("section");
   container.id = "results-section";
-  container.className = "results-section page-inner"; // reuse page-inner for width
-  // place it after .search-row if possible
+  container.className = "results-section page-inner";
   const searchRow = document.querySelector(".search-row");
   if (searchRow && searchRow.parentNode) {
     searchRow.parentNode.insertBefore(container, searchRow.nextSibling);
@@ -24,9 +36,7 @@ if (!resultsSection) {
   resultsSection = container;
 }
 
-
-// Modal containers (one for details modal, one for instruction modal)
-// Create them now (hidden by default)
+// Modals (as before)
 let detailsModal = document.getElementById("details-modal");
 if (!detailsModal) {
   detailsModal = document.createElement("div");
@@ -38,9 +48,7 @@ if (!detailsModal) {
       <header>
         <h2 id="details-modal-title">Part details</h2>
       </header>
-      <div class="modal-body">
-        <!-- empty for now; filled later if needed -->
-      </div>
+      <div class="modal-body"></div>
       <footer>
         <button class="modal-close">Close</button>
       </footer>
@@ -69,32 +77,63 @@ if (!instructionModal) {
   document.body.appendChild(instructionModal);
 }
 
-// small helper config
-const WHATSAPP_PHONE = "+237697436198"; // optional: put your business number in international format, without + (e.g. "2348012345678"). If empty, uses "https://wa.me/?text="
-const INSTRUCTION_MODAL_DELAY_MS = 3000; // show the tip modal this many ms after a search
+// instruction modal timeout handle
 let instructionModalTimeout = null;
+
+// App state for pagination & last results
+const state = {
+  lastResults: [], // full array of results from the last search (not paged)
+  page: 1,
+  pageSize: PAGE_SIZE
+};
 
 /* ============================
    Middle: Function definitions
    ============================ */
 
-/**
- * normalize string for searching (lowercase, trim)
- */
+/* ---------- Utilities ---------- */
 function normalize(str = "") {
   return String(str).toLowerCase().trim();
 }
 
-/**
- * searchParts: performs a search over autoParts array.
- * Searches by: name, category, any OEM number, keywords (any), and description.
- * Returns array of matching parts (simple relevance: matches in name first, then others).
- */
+function escapeHtml(str = "") {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function formatNumber(n) {
+  return Number(n).toLocaleString();
+}
+
+function openModal(modalEl) {
+  modalEl.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+function closeModal(modalEl) {
+  modalEl.classList.add("hidden");
+  // if no other modals open, remove page-level class
+  const anyOpen = document.querySelectorAll(".modal:not(.hidden)").length > 0;
+  if (!anyOpen) document.body.classList.remove("modal-open");
+}
+
+function openWhatsAppForPart(part) {
+  const message = `Hello, I want to order *${part.name}* \n \n • (Part ID: ${part.id}). \n • Price: ₦${formatNumber(part.price)}. \n \n Please confirm availability and delivery options.`;
+  const encoded = encodeURIComponent(message);
+  const waUrl = WHATSAPP_PHONE
+    ? `https://wa.me/${WHATSAPP_PHONE.replace(/\D/g, "")}?text=${encoded}`
+    : `https://wa.me/?text=${encoded}`;
+  window.open(waUrl, "_blank");
+}
+
+/* ---------- Search logic ---------- */
 function searchParts(query) {
   const q = normalize(query);
   if (!q) return [];
 
-  // compute simple score and sort by score descending
   const results = autoParts
     .map((part) => {
       let score = 0;
@@ -110,7 +149,6 @@ function searchParts(query) {
       if (nOem.some(o => o.includes(q))) score += 30;
       if (nKeywords.some(k => k.includes(q))) score += 25;
 
-      // small fallback if no direct includes but token matches any word
       const qTokens = q.split(/\s+/);
       qTokens.forEach(token => {
         if (token && nName.split(/\s+/).includes(token)) score += 5;
@@ -125,30 +163,26 @@ function searchParts(query) {
   return results;
 }
 
-/**
- * clearResults: remove all children from resultsSection
- */
-function clearResults() {
-  resultsSection.innerHTML = "";
+/* ---------- Result card creation ---------- */
+function formatFirstCompatibility(part) {
+  const first = (part.compatibilities && part.compatibilities[0]) || null;
+  if (!first) return "—";
+  return `${escapeHtml(first.brand)} ${escapeHtml(first.model)} (${escapeHtml(first.years)})`;
 }
 
-/**
- * createResultCard: given a part object, build a result card DOM node and return it.
- * The card includes:
- * - image
- * - name
- * - description
- * - first compatibility summary (brand/model/years)
- * - availability tag
- * - Place Order button (opens WhatsApp with message)
- * - See Details button (opens details modal)
- */
+function availabilityClass(avail) {
+  const a = normalize(avail);
+  if (a.includes("in stock")) return "avail-in-stock";
+  if (a.includes("low")) return "avail-low";
+  if (a.includes("out") || a.includes("unavailable")) return "avail-out";
+  return "avail-unknown";
+}
+
 function createResultCard(part) {
   const card = document.createElement("article");
   card.className = "result-card";
   card.dataset.partId = String(part.id);
 
-  // simple layout container
   card.innerHTML = `
     <div class="card-media">
       <img src="${part.image}" alt="${escapeHtml(part.name)} image" onerror="this.onerror=null;this.src='images/placeholder.png'">
@@ -167,103 +201,191 @@ function createResultCard(part) {
       </div>
     </div>
   `;
-
-  // attach event handlers via delegation at top-level; but we add a small data attr for the part
   return card;
 }
 
+/* ---------- Rendering & Pagination ---------- */
+
 /**
- * renderResults: given an array of parts, render them into resultsSection.
- * If no results, show a friendly message.
+ * clearResults: empty resultsSection
  */
-function renderResults(parts) {
+function clearResults() {
+  resultsSection.innerHTML = "";
+}
+
+/**
+ * renderResults: Accepts an array (fullResults), sets state.lastResults,
+ * and renders the current page (state.page) slice.
+ */
+function renderResults(fullResults) {
+  // store full results for paging
+  state.lastResults = Array.isArray(fullResults) ? fullResults.slice() : [];
+  // clamp page within valid range
+  const totalPages = Math.max(1, Math.ceil(state.lastResults.length / state.pageSize));
+  if (state.page > totalPages) state.page = totalPages;
+  if (state.page < 1) state.page = 1;
+
   clearResults();
 
+  // header
   const header = document.createElement("div");
   header.className = "results-header";
-  header.innerHTML = `<h2>Search results (${parts.length})</h2>`;
+  header.innerHTML = `<h2>Search results (${state.lastResults.length})</h2>`;
   resultsSection.appendChild(header);
 
-  if (!parts || parts.length === 0) {
+  if (!state.lastResults || state.lastResults.length === 0) {
     const noResults = document.createElement("div");
     noResults.className = "no-results";
     noResults.innerHTML = `<p>No parts found for your search. Try keywords, OEM number, or part category.</p>`;
     resultsSection.appendChild(noResults);
+
+    // clear pagination area if any
+    renderPaginationControls();
     return;
   }
 
+  // compute page slice
+  const start = (state.page - 1) * state.pageSize;
+  const end = start + state.pageSize;
+  const pageItems = state.lastResults.slice(start, end);
+
+  // results grid
   const grid = document.createElement("div");
   grid.className = "results-grid";
-  parts.forEach(part => {
+  pageItems.forEach(part => {
     const card = createResultCard(part);
     grid.appendChild(card);
   });
-
   resultsSection.appendChild(grid);
 
-  // show instruction modal a few seconds after presenting results (only once per search)
+  // render pagination controls below results
+  renderPaginationControls();
+
+  // scroll to results top for better UX after search or page change
+  scrollToResultsTop();
+
+  // show instruction modal a few seconds after presenting results — only once per browser session
   if (instructionModalTimeout) clearTimeout(instructionModalTimeout);
-  instructionModalTimeout = setTimeout(() => {
-    openModal(instructionModal);
-  }, INSTRUCTION_MODAL_DELAY_MS);
+
+  const resultsExist = Array.isArray(state.lastResults) && state.lastResults.length > 0;
+  const alreadyShown = sessionStorage.getItem(INSTRUCTION_SHOWN_KEY) === "true";
+
+  if (resultsExist && !alreadyShown) {
+    instructionModalTimeout = setTimeout(() => {
+      openModal(instructionModal);
+      try {
+        sessionStorage.setItem(INSTRUCTION_SHOWN_KEY, "true");
+      } catch (err) {
+        console.warn("Could not persist instruction state in sessionStorage:", err);
+      }
+    }, INSTRUCTION_MODAL_DELAY_MS);
+  }
 }
 
-/* -------------------------
-   Helper small utilities
-   ------------------------- */
+/**
+ * renderPaginationControls: create pagination DOM and attach event handlers (Prev/Next + numbers)
+ * The controls are appended to the resultsSection (or updated if existing).
+ */
+function renderPaginationControls() {
+  const total = state.lastResults.length;
+  const pageSize = state.pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  // Remove existing pagination container if present
+  const existing = resultsSection.querySelector(".pagination");
+  if (existing) existing.remove();
 
-function escapeHtml(str = "") {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+  // If only one page, do not render controls
+  if (totalPages <= 1) return;
+
+  const pagination = document.createElement("div");
+  pagination.className = "pagination";
+
+  const nav = document.createElement("nav");
+  nav.className = "pager";
+  nav.setAttribute("aria-label", "Pagination");
+
+  // Prev button
+  const prev = document.createElement("button");
+  prev.className = "pager-btn prev";
+  prev.type = "button";
+  prev.textContent = "Prev";
+  prev.disabled = state.page <= 1;
+  prev.addEventListener("click", () => {
+    if (state.page <= 1) return;
+    state.page = Math.max(1, state.page - 1);
+    renderResults(state.lastResults);
+  });
+  nav.appendChild(prev);
+
+  // page number buttons (compact window)
+  // show a window around current page: keep up to 7 buttons (first, ..., 3 before/after, ..., last)
+  const maxButtons = 7;
+  let startPage = Math.max(1, state.page - 3);
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+  if (endPage - startPage + 1 < maxButtons) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+
+  if (startPage > 1) {
+    nav.appendChild(makePageButton(1));
+    if (startPage > 2) nav.appendChild(makeDots());
+  }
+
+  for (let p = startPage; p <= endPage; p++) {
+    nav.appendChild(makePageButton(p));
+  }
+
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) nav.appendChild(makeDots());
+    nav.appendChild(makePageButton(totalPages));
+  }
+
+  // Next button
+  const next = document.createElement("button");
+  next.className = "pager-btn next";
+  next.type = "button";
+  next.textContent = "Next";
+  next.disabled = state.page >= totalPages;
+  next.addEventListener("click", () => {
+    if (state.page >= totalPages) return;
+    state.page = Math.min(totalPages, state.page + 1);
+    renderResults(state.lastResults);
+  });
+  nav.appendChild(next);
+
+  pagination.appendChild(nav);
+  resultsSection.appendChild(pagination);
+
+  // helpers used above
+  function makePageButton(p) {
+    const btn = document.createElement("button");
+    btn.className = `pager-num ${p === state.page ? "active" : ""}`;
+    btn.type = "button";
+    btn.textContent = String(p);
+    btn.addEventListener("click", () => {
+      if (p === state.page) return;
+      state.page = p;
+      renderResults(state.lastResults);
+    });
+    return btn;
+  }
+
+  function makeDots() {
+    const span = document.createElement("span");
+    span.className = "dots";
+    span.textContent = "…";
+    return span;
+  }
 }
 
-function formatFirstCompatibility(part) {
-  const first = (part.compatibilities && part.compatibilities[0]) || null;
-  if (!first) return "—";
-  return `${escapeHtml(first.brand)} ${escapeHtml(first.model)} (${escapeHtml(first.years)})`;
-}
-
-function availabilityClass(avail) {
-  const a = normalize(avail);
-  if (a.includes("in stock")) return "avail-in-stock";
-  if (a.includes("low")) return "avail-low";
-  if (a.includes("out") || a.includes("unavailable")) return "avail-out";
-  return "avail-unknown";
-}
-
-function formatNumber(n) {
-  return Number(n).toLocaleString(); // e.g. 18,500
-}
-
-/* -------------------------
-   Modal helpers
-   ------------------------- */
-
-function openModal(modalEl) {
-  modalEl.classList.remove("hidden");
-  document.body.classList.add("modal-open");
-}
-
-function closeModal(modalEl) {
-  modalEl.classList.add("hidden");
-  document.body.classList.remove("modal-open");
-}
-
-/* -------------------------
-   WhatsApp helper
-   ------------------------- */
-
-function openWhatsAppForPart(part) {
-  const message = `Hello, I want to order *${part.name}* \n \n • (Part ID: ${part.id}). \n • Price: ₦${formatNumber(part.price)}. \n \n Please confirm availability and delivery options.`;
-  const encoded = encodeURIComponent(message);
-  const waUrl = WHATSAPP_PHONE
-    ? `https://wa.me/${WHATSAPP_PHONE}?text=${encoded}`
-    : `https://wa.me/?text=${encoded}`;
-
-  window.open(waUrl, "_blank");
+/**
+ * scrollToResultsTop: scrolls the results container into view for UX when changing page.
+ */
+function scrollToResultsTop() {
+  // scroll the resultsSection or its first child into view
+  if (resultsSection) {
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 /* ============================
@@ -275,6 +397,8 @@ if (searchButton) {
   searchButton.addEventListener("click", (e) => {
     e.preventDefault();
     const q = searchInput?.value ?? "";
+    // reset page to 1 on new search
+    state.page = 1;
     const results = searchParts(q);
     renderResults(results);
   });
@@ -286,6 +410,7 @@ if (searchInput) {
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      state.page = 1;
       const results = searchParts(searchInput.value);
       renderResults(results);
     }
@@ -294,6 +419,7 @@ if (searchInput) {
   searchInput.addEventListener("input", () => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
+      state.page = 1;
       const results = searchParts(searchInput.value);
       renderResults(results);
     }, 450); // 450ms debounce for usability
@@ -313,9 +439,8 @@ resultsSection.addEventListener("click", (e) => {
   if (target.matches(".place-order")) {
     openWhatsAppForPart(part);
   } else if (target.matches(".see-details")) {
-    // for now open details modal (empty). We can populate modal content later as needed.
+    // populate and open details modal
     const body = detailsModal.querySelector(".modal-body");
-    // populate with minimal content for now
     body.innerHTML = `
       <p><strong>${escapeHtml(part.name)}</strong></p>
       <p>${escapeHtml(part.description)}</p>
@@ -329,22 +454,20 @@ resultsSection.addEventListener("click", (e) => {
   }
 });
 
-/* Modal close buttons */
+/* Modal close buttons & backdrop */
 document.addEventListener("click", (e) => {
   const t = e.target;
-  // instruction modal Ok
   if (t.matches(".instruction-ok")) {
     closeModal(instructionModal);
   }
-  // details modal close
   if (t.matches(".modal-close")) {
     closeModal(detailsModal);
   }
-  // click on backdrop closes modals
   if (t.matches(".modal-backdrop")) {
     const parent = t.parentElement;
-    if (parent && parent.id === "details-modal") closeModal(detailsModal);
-    if (parent && parent.id === "instruction-modal") closeModal(instructionModal);
+    if (!parent) return;
+    if (parent.id === "details-modal") closeModal(detailsModal);
+    if (parent.id === "instruction-modal") closeModal(instructionModal);
   }
 });
 

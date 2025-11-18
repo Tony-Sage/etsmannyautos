@@ -268,3 +268,81 @@ body.modal-open {
   outline-offset: 3px;
   border-radius: 8px;
 }
+
+/* ---------- Pagination controls (Manny Autos) ---------- */
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pager {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  background: transparent;
+  padding: 6px;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(11,58,111,0.03);
+}
+
+.pager-btn,
+.pager-num {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: #fff;
+  color: #0B3B6F;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  min-width: 44px;
+  text-align: center;
+  box-shadow: 0 6px 14px rgba(11,58,111,0.04);
+  transition: transform .12s ease, background .12s ease, color .12s ease;
+}
+
+.pager-btn[disabled],
+.pager-num[disabled] {
+  opacity: 0.48;
+  cursor: default;
+  transform: none;
+}
+
+.pager-btn:hover:not([disabled]),
+.pager-num:hover:not(.active) {
+  transform: translateY(-2px);
+  background: rgba(46,196,214,0.06);
+}
+
+.pager-num.active {
+  background: linear-gradient(180deg, #2EC4D6 0%, #0B3B6F 100%);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(11,58,111,0.10);
+  transform: translateY(-1px);
+}
+
+.pager .dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  color: #6b7a89;
+  font-weight: 700;
+}
+
+/* Responsive: make controls wrap on small screens */
+@media (max-width: 420px) {
+  .pager {
+    gap: 6px;
+    padding: 4px;
+  }
+  .pager-btn,
+  .pager-num {
+    padding: 8px 10px;
+    min-width: 36px;
+    font-size: 14px;
+  }
+}
