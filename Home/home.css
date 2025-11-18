@@ -135,6 +135,10 @@ body {
   transition: background .18s ease, color .18s ease, transform .12s ease;
 }
 
+.mobile-nav-links .active {
+ color: #2EC4D6;
+}
+
 .mobile-sidebar-inner {
   padding: 18px;
   display: flex;
