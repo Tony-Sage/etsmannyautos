@@ -83,8 +83,12 @@ body {
   transform: translateY(-1px);
 }
 
-.nav-link.active {
-  color: #2EC4D6;
+.active {
+ color: #2EC4D6;
+}
+
+#active {
+ color: #2EC4D6;
 }
 
 /* mode toggle (dropdown under Search) */
@@ -351,49 +355,6 @@ body {
   font-size: 16px;
 }
 
-.input-wrap {
-  position: relative;
-  display: inline-block;
-}
-
-.search_input {
-  font-size: 18px;
-  padding: 8px 12px;
-  width: 300px;
-  box-sizing: border-box;
-  background: white;
-  border: 1px solid #ccc;
-  /* make sure input text is above the span */
-  position: relative;
-  z-index: 1;
-}
-
-.placeholder-text {
-  position: absolute;
-  left: 12px;          /* match input padding-left */
-  top: 50%;
-  transform: translateY(-100%);
-  pointer-events: none; /* clicks go to input */
-  color: #999;          /* placeholder color */
-  font-style: italic;    /* optional placeholder style */
-  white-space: nowrap;
-  z-index: 2;
-}
-
-/* blinking caret inside the span */
-.placeholder-text::after {
-  content: "";
-  display: inline-block;
-  width: 1px;
-  height: 1em;
-  background: currentColor;
-  margin-left: 2px;
-  vertical-align: middle;
-  animation: blink 900ms steps(1) infinite;
-}
-
-@keyframes blink { 50% { opacity: 0; } }
-
 .btn {
   padding: 10px 18px;
   border-radius: 999px;
@@ -410,11 +371,6 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-}
-
-/* Category and Categories grid (commented) */
-.categories {
-  display: none;
 }
 
 .categories-grid {

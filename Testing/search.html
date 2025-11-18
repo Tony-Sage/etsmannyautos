@@ -6,6 +6,7 @@
   <title>Search Parts — Manny Autos</title>
 
   <link rel="stylesheet" href="search.css">
+  <link rel="stylesheet" href="search2.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -56,7 +57,18 @@
       <nav>
         <ul class="mobile-nav-links">
           <li><a href="index.html">Home</a></li>
-          <li><a href="search.html" >Search (By Identifiers)</a></li>
+          <li class="nav-item dropdown">
+            <!-- Search link shows the current mode (By Identifiers) -->
+            <a class="nav-link active" id="active" href="search.html">Search</a>
+            <div class="mode-toggle">
+              <span class="mode-text">By Identifiers</span>
+              <button class="mode-arrow" aria-label="Change search mode">▾</button>
+              <ul class="mode-menu">
+                <li><button class="mode-option">By Identifiers</button></li>
+                <li><button class="mode-option">By Category</button></li>
+              </ul>
+            </div>
+          </li>
           <li><a href="store.html">Store</a></li>
         </ul>
       </nav>
@@ -93,9 +105,8 @@
         <h1>Search by identifiers</h1>
         <p class="sub">Enter a part name, OEM number, or reference code.</p>
 
-        <div class="search-row input-wrap">
+        <div class="search-row">
           <input type="search" class="search-input" placeholder="Search part name, OEM number, reference...">
-          <span class="placeholder-text"></span>
           <button class="btn btn-primary">Search</button>
         </div>
       </section>
@@ -108,12 +119,12 @@
       <section class="categories">
         <h1>Browse categories</h1>
         <div class="categories-grid">
-          <div class="category-card">Engine Parts</div>
+          <!--<div class="category-card">Engine Parts</div>
           <div class="category-card">Suspension</div>
           <div class="category-card">Brakes</div>
           <div class="category-card">Electrical</div>
           <div class="category-card">Body Parts</div>
-          <div class="category-card">Cooling</div>
+          <div class="category-card">Cooling</div>-->
         </div>
       </section>
       
@@ -133,5 +144,7 @@
   </script>
   
   <script src="search.js" type="module"></script>
+  <script src="search2.js" type="module"></script>
+  <script src="search3.js" type="module"></script>
 </body>
 </html>
