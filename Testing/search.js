@@ -124,6 +124,13 @@ modeOptions.forEach((option) => {
  option.addEventListener("click", closeSideBar)
 })
 
+document.querySelector(".mode-text").addEventListener("mouseover", () => {
+ document.querySelector(".mode-menu").style.display = "block"
+ setTimeout(() => {
+  document.querySelector(".mode-menu").style.display = "none"
+ }, 2500)
+})
+
 // ----------
 //INITIALIZATIONS
 // ----------

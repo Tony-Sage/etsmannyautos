@@ -105,6 +105,7 @@ body {
   gap: 6px;
   font-size: 0.95rem;
   color: #6b7a89;
+  cursor: pointer;
 }
 
 .mode-text {
