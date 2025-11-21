@@ -15,6 +15,7 @@ const STORE_SESSION_CART_KEY = "manny_store_cart_v1";
 
 // ---------- Sample dataset (variants) ----------
 // Keep this small for demo; expand for real usage.
+
 const storeData = [
   {
     id: 1,
@@ -1106,11 +1107,6 @@ function showToast(msg, ms = 2400) {
 function renderPartsMatchingFiltersToPage() {
   // re-populate all strips
   renderStrips();
-}
-
-// small helper to format currency in UI
-function formatCurrency(n) {
-  return "₦" + Number(n).toLocaleString();
 }
 
 // ------------------ Expose minimal global for debugging ------------------
