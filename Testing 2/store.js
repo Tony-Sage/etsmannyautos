@@ -1,1167 +1,1124 @@
 // store.js
-// Implements store rendering, filters, cart, modals, quick-order flows.
-// Expects `export const storeData = [...]` from ./data.js
-import { storeData } from "./data.js";
+// Manny Autos — store page behavior (updated)
+// - Adds "Others" filter mode (tags)
+// - Splits page into three sections: Top (Featured), Middle (Categories), Bottom (Others)
+// - Parts can appear in multiple tracks (uses `tracks` array or inferred placement)
+// - Product cards open details modal by clicking the card (no separate buttons)
 
-/* ============
-   Config & State
-   ============ */
-const WHATSAPP_PHONE = "+2349161536457"; // change to your number w/o plus if desired
-const MAX_TAG_STRIPS = 10;
-const CATEGORIES = [
-  "Engine Accessories",
-  "Chassis Accessories",
-  "Body Parts",
-  "Electrical Accessories",
-  "Interior Decorations"
-];
+import {storeData} from "./data.js"
 
+const BUSSINESS_WHATSAPP = "+2348012345678"; // <-- REPLACE with your number
+const STORE_SESSION_CART_KEY = "manny_store_cart_v1";
+
+/* =========================
+   App state
+   - parts: immutable reference to storeData
+   - filters: mode and selected sets
+   - strips: computed mapping: featured, categories, othersByTag, tagList
+   ========================= */
 const state = {
-  // filters: arrays allow multi-selection
-  filterMode: "category", // 'brand' | 'model' | 'category' | 'others'
+  parts: storeData.slice(),
   filters: {
-    brand: new Set(),
-    model: new Set(),
-    category: new Set(),
-    tags: new Set()
+    mode: "category", // 'category' | 'brand' | 'model' | 'others'
+    selected: {
+      brand: new Set(),
+      model: new Set(),
+      category: new Set(),
+      tags: new Set()
+    }
   },
-  showFilterChips: false,
-  // cart: { productId, variant: {brand,model,year,price}, qty }
-  cart: JSON.parse(localStorage.getItem("manny_cart") || "[]"),
-  // view: 'home' or { page: 'section', id: 'featured'|'tag:foo'|'category:...' }
-  view: "home"
+  cart: loadCartFromSession(),
+  strips: {
+    featured: [],
+    categories: {},     // categoryName -> [partIds]
+    othersByTag: {},    // tag -> [partIds]
+    tagList: []         // list of tags discovered (sorted)
+  },
+  // canonical category order for the middle section
+  canonicalCategories: [
+    "Engine Parts",
+    "Chassis Parts",
+    "Body Parts",
+    "Electrical Accessories",
+    "Interior Accessories"
+  ]
 };
 
-/* ============
-   DOM short-cuts
-   ============ */
-const doc = document;
-const main = doc.querySelector("main.store-main") || doc.querySelector("main") || doc.body;
-const storeContent = doc.querySelector(".store-content") || (() => {
-  // if not present, create a container and insert after header
-  const c = doc.createElement("div");
-  c.className = "store-content";
-  const header = doc.querySelector(".main-header");
-  header?.insertAdjacentElement("afterend", c);
-  return c;
-})();
-const sidebar = doc.getElementById("store-sidebar");
-const mobileSidebar = doc.getElementById("mobileSidebar");
-const hamburger = doc.querySelector(".hamburger");
-const mobileClose = doc.querySelector(".mobile-close");
-const mobileCartBtns = Array.from(doc.querySelectorAll(".mobile-cart-btn"));
-const navCartBtn = doc.querySelector(".mobile-cart-btn"); // nav-level (may be hidden on small screens)
-const searchInput = doc.getElementById("search-input") || doc.querySelector(".search-input");
-const filterBtn = doc.querySelector(".filter-btn");
-const categoriesStrip = doc.querySelector(".categories");
-const stripContainerRoot = storeContent; // we'll render strips into storeContent
-const sectionModal = doc.getElementById("section-modal");
-const detailsModal = doc.getElementById("details-modal");
+/* =========================
+   Cached DOM nodes
+   (re-uses existing HTML structure)
+   - We assume the page contains three anchor container elements:
+     1) a top area where the Featured strip is placed (we'll look for .store-strip where .strip-title = "Featured")
+     2) middle area - five category strips (strip-title text exactly as canonicalCategories)
+     3) bottom area - we'll dynamically generate strips for each tag and append to a container with id #others-section
+   If #others-section doesn't exist, we create it at the end of main content.
+   ========================= */
+const filterBtn = document.querySelector(".filter-btn");
+const categoriesRow = document.querySelector(".categories"); // reusable .category-filter buttons
+const searchInput = document.getElementById("search-input");
+const sectionModal = document.getElementById("section-modal");
+const detailsModal = document.getElementById("details-modal");
+const mobileSidebar = document.getElementById("mobileSidebar");
+const hamburgerBtn = document.querySelector(".hamburger");
+const mobileCartBtns = document.querySelectorAll(".mobile-cart-btn");
+const bodyEl = document.body;
 
-/* ============
+/* containers we may create */
+let othersSectionContainer = document.getElementById("others-section"); // bottom container for tag strips
+let appliedFiltersContainer = null;
+let filtersDropdownMenu = null;
+let cartModal = null;
+
+/* =========================
    Utilities
-   ============ */
-const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+   ========================= */
+function escapeHtml(s="") { return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+function formatCurrency(n){ return `₦${Number(n).toLocaleString()}`; }
+function unique(arr){ return Array.from(new Set(arr)); }
 
-function saveCart() {
+/* =========================
+   Persistence: cart
+   ========================= */
+function loadCartFromSession(){
   try {
-    localStorage.setItem("manny_cart", JSON.stringify(state.cart));
-    updateCartCount();
-  } catch (e) {
-    console.warn("Could not persist cart", e);
+    const raw = sessionStorage.getItem(STORE_SESSION_CART_KEY);
+    return raw ? JSON.parse(raw) : { items: [] };
+  } catch(e){ return { items: [] }; }
+}
+function persistCart(){ try{ sessionStorage.setItem(STORE_SESSION_CART_KEY, JSON.stringify(state.cart)); }catch(e){} }
+
+/* =========================
+   Build strips mapping (featured, categories, othersByTag)
+   - A part can be in multiple tracks.
+   - If part.tracks exists, respect it (e.g. ["featured","brakes","custom-tag"])
+   - Otherwise: include it in:
+       - featured if id appears in a short curated featured list (we choose first N)
+       - category track: its category
+       - tag tracks: every tag in part.tags
+   ========================= */
+function buildStripsMapping() {
+  // reset
+  state.strips.featured = [];
+  state.strips.categories = {};
+  state.strips.othersByTag = {};
+  const tagSet = new Set();
+
+  // featured: choose first 8 by default (or parts which explicitly include 'featured' track)
+  const explicitFeatured = state.parts.filter(p => Array.isArray(p.tracks) && p.tracks.includes("featured")).map(p => p.id);
+  if (explicitFeatured.length) {
+    state.strips.featured = explicitFeatured.slice(0, 8);
+  } else {
+    state.strips.featured = state.parts.slice(0, 8).map(p => p.id);
   }
-}
 
-function updateCartCount() {
-  const count = state.cart.reduce((s, it) => s + it.qty, 0);
-  // update any cart count UI
-  const counts = doc.querySelectorAll(".cart-count");
-  counts.forEach((el) => (el.textContent = ` (${count})`));
-  // update any sidebar view-cart text
-  const vc = doc.querySelector("#store-sidebar .view-cart") || doc.querySelector(".view-cart");
-  if (vc) vc.textContent = `View Cart (${count})`;
-}
+  state.parts.forEach(p => {
+    // category track
+    const cat = (p.category || "Uncategorized").trim();
+    if (!state.strips.categories[cat]) state.strips.categories[cat] = [];
+    // a part can appear multiple times in categories? No — categories are unique, but part may appear in more than one track (e.g. both featured and its category)
+    state.strips.categories[cat].push(p.id);
 
-/**
- * compute min,max from variants for display
- */
-function minMaxPrice(variants = []) {
-  if (!Array.isArray(variants) || variants.length === 0) return { min: 0, max: 0 };
-  const prices = variants.map((v) => Number(v.price || 0)).filter((p) => !Number.isNaN(p));
-  return { min: Math.min(...prices), max: Math.max(...prices) };
-}
-
-/* ============
-   Data helpers
-   ============ */
-function getAllTags(data = storeData) {
-  const all = data.flatMap((p) => p.tags || []);
-  return uniq(all);
-}
-
-function getAllBrands(data = storeData) {
-  const all = data.flatMap((p) => (p.compatibilities || []).map((c) => c.brand));
-  return uniq(all);
-}
-
-function getModelsForBrand(brand, data = storeData) {
-  if (!brand) return uniq(data.flatMap((p) => (p.compatibilities || []).map((c) => c.model)));
-  const models = data.flatMap((p) => (p.compatibilities || []).filter((c) => c.brand === brand).map((c) => c.model));
-  return uniq(models);
-}
-
-/* ============
-   Rendering: Filter UI
-   ============ */
-
-/**
- * Build a small dropdown to choose filter mode (brand, model, category, others).
- * Clicking an option sets state.filterMode and rebuilds the .categories chip list
- */
-function ensureFilterModeDropdown() {
-  let dd = doc.querySelector("#filter-mode-dropdown");
-  if (dd) return dd;
-
-  dd = doc.createElement("div");
-  dd.id = "filter-mode-dropdown";
-  dd.style.position = "absolute";
-  dd.style.zIndex = 1200;
-  dd.style.background = "#fff";
-  dd.style.border = "1px solid rgba(0,0,0,0.08)";
-  dd.style.boxShadow = "0 8px 20px rgba(11,58,111,0.06)";
-  dd.style.padding = "8px";
-  dd.style.borderRadius = "8px";
-  dd.style.display = "none";
-
-  const options = [
-    { key: "brand", label: "By Brand" },
-    { key: "model", label: "By Model" },
-    { key: "category", label: "By Category" },
-    { key: "others", label: "Others (tags)" }
-  ];
-
-  options.forEach((opt) => {
-    const b = doc.createElement("button");
-    b.type = "button";
-    b.className = "filter-mode-option";
-    b.textContent = opt.label;
-    b.style.display = "block";
-    b.style.width = "100%";
-    b.style.margin = "4px 0";
-    b.style.background = "transparent";
-    b.style.border = "0";
-    b.style.textAlign = "left";
-    b.style.cursor = "pointer";
-    b.addEventListener("click", () => {
-      state.filterMode = opt.key;
-      populateFilterChips(); // rebuild category chips area based on mode
-      hideFilterModeDropdown();
-      // clear existing filter selections (optional; keep them?) - we keep them
+    // tags
+    (p.tags || []).forEach(t => {
+      const tag = String(t).trim();
+      tagSet.add(tag);
+      if (!state.strips.othersByTag[tag]) state.strips.othersByTag[tag] = [];
+      state.strips.othersByTag[tag].push(p.id);
     });
-    dd.appendChild(b);
-  });
 
-  doc.body.appendChild(dd);
-  return dd;
-}
-
-function showFilterModeDropdown() {
-  const dd = ensureFilterModeDropdown();
-  // position under filterBtn
-  const rect = filterBtn.getBoundingClientRect();
-  dd.style.left = `${rect.left}px`;
-  dd.style.top = `${rect.bottom + 8 + window.scrollY}px`;
-  dd.style.display = "block";
-  // close on outside click
-  setTimeout(() => {
-    const handler = (e) => {
-      if (!dd.contains(e.target) && e.target !== filterBtn) {
-        hideFilterModeDropdown();
-        doc.removeEventListener("click", handler);
-      }
-    };
-    doc.addEventListener("click", handler);
-  }, 0);
-}
-
-function hideFilterModeDropdown() {
-  const dd = doc.querySelector("#filter-mode-dropdown");
-  if (dd) dd.style.display = "none";
-}
-
-/**
- * populate .categories area depending on current filterMode
- */
-function populateFilterChips() {
-  // ensure container exists
-  if (!categoriesStrip) {
-    console.warn("No .categories element found");
-    return;
-  }
-  categoriesStrip.innerHTML = ""; // reset
-
-  if (state.filterMode === "brand") {
-    const brands = getAllBrands();
-    brands.forEach((b) => {
-      const btn = doc.createElement("button");
-      btn.className = "category-filter";
-      if (state.filters.brand.has(b)) btn.classList.add("active");
-      btn.textContent = b;
-      btn.addEventListener("click", () => {
-        toggleSet(state.filters.brand, b);
-        btn.classList.toggle("active");
-        onFiltersChanged();
+    // explicit tracks array: allow placing into named tracks (besides category and tags)
+    if (Array.isArray(p.tracks)) {
+      p.tracks.forEach(tname => {
+        const tn = String(tname).trim();
+        if (!tn) return;
+        // if "featured" already handled, ignore duplication
+        if (tn.toLowerCase() === "featured") {
+          if (!state.strips.featured.includes(p.id)) state.strips.featured.push(p.id);
+          return;
+        }
+        // if matches one of canonicalCategories, ensure it appears there too
+        if (state.canonicalCategories.includes(tn)) {
+          if (!state.strips.categories[tn]) state.strips.categories[tn] = [];
+          if (!state.strips.categories[tn].includes(p.id)) state.strips.categories[tn].push(p.id);
+          return;
+        }
+        // otherwise treat as a tag-equivalent (others)
+        tagSet.add(tn);
+        if (!state.strips.othersByTag[tn]) state.strips.othersByTag[tn] = [];
+        if (!state.strips.othersByTag[tn].includes(p.id)) state.strips.othersByTag[tn].push(p.id);
       });
-      categoriesStrip.appendChild(btn);
-    });
-  } else if (state.filterMode === "model") {
-    // show models (across dataset)
-    const models = uniq(storeData.flatMap((p) => (p.compatibilities || []).map((c) => c.model)));
-    models.forEach((m) => {
-      const btn = doc.createElement("button");
-      btn.className = "category-filter";
-      if (state.filters.model.has(m)) btn.classList.add("active");
-      btn.textContent = m;
-      btn.addEventListener("click", () => {
-        toggleSet(state.filters.model, m);
-        btn.classList.toggle("active");
-        onFiltersChanged();
-      });
-      categoriesStrip.appendChild(btn);
-    });
-  } else if (state.filterMode === "category") {
-    CATEGORIES.forEach((c) => {
-      const btn = doc.createElement("button");
-      btn.className = "category-filter";
-      if (state.filters.category.has(c)) btn.classList.add("active");
-      btn.textContent = c;
-      btn.addEventListener("click", () => {
-        toggleSet(state.filters.category, c);
-        btn.classList.toggle("active");
-        onFiltersChanged();
-      });
-      categoriesStrip.appendChild(btn);
-    });
-  } else if (state.filterMode === "others") {
-    // show top tags
-    const tags = getAllTags();
-    tags.slice(0, 24).forEach((t) => {
-      const btn = doc.createElement("button");
-      btn.className = "category-filter";
-      if (state.filters.tags.has(t)) btn.classList.add("active");
-      btn.textContent = t;
-      btn.addEventListener("click", () => {
-        toggleSet(state.filters.tags, t);
-        btn.classList.toggle("active");
-        onFiltersChanged();
-      });
-      categoriesStrip.appendChild(btn);
-    });
-  }
-}
-
-/* ============
-   Filter chips UI ("See Filters")
-   ============ */
-function ensureFiltersArea() {
-  let area = doc.querySelector(".filters-area");
-  if (!area) {
-    area = doc.createElement("div");
-    area.className = "filters-area page-inner";
-    area.style.padding = "0 12px 12px";
-    // checkbox toggle
-    const cbWrap = doc.createElement("label");
-    cbWrap.style.display = "inline-flex";
-    cbWrap.style.alignItems = "center";
-    cbWrap.style.gap = "8px";
-    const cb = doc.createElement("input");
-    cb.type = "checkbox";
-    cb.id = "see-filters-checkbox";
-    cb.addEventListener("change", (e) => {
-      state.showFilterChips = e.target.checked;
-      renderFilterChips();
-    });
-    cbWrap.appendChild(cb);
-    cbWrap.appendChild(doc.createTextNode("See Filters"));
-    area.appendChild(cbWrap);
-
-    const chipsWrap = doc.createElement("div");
-    chipsWrap.className = "applied-filter-chips";
-    chipsWrap.style.marginTop = "8px";
-    chipsWrap.style.display = "none"; // toggled by checkbox
-    area.appendChild(chipsWrap);
-
-    // append after categories strip
-    categoriesStrip?.insertAdjacentElement("afterend", area);
-  }
-  return area;
-}
-
-function renderFilterChips() {
-  const area = ensureFiltersArea();
-  const chipsWrap = area.querySelector(".applied-filter-chips");
-  chipsWrap.innerHTML = "";
-  if (!state.showFilterChips) {
-    chipsWrap.style.display = "none";
-    return;
-  }
-  chipsWrap.style.display = "flex";
-  chipsWrap.style.gap = "6px";
-  chipsWrap.style.flexWrap = "wrap";
-  // compile list of applied filters
-  const applied = [];
-  state.filters.brand.forEach((b) => applied.push({ type: "brand", value: b }));
-  state.filters.model.forEach((m) => applied.push({ type: "model", value: m }));
-  state.filters.category.forEach((c) => applied.push({ type: "category", value: c }));
-  state.filters.tags.forEach((t) => applied.push({ type: "tag", value: t }));
-
-  if (applied.length === 0) {
-    const span = doc.createElement("span");
-    span.style.color = "var(--muted)";
-    span.textContent = "No filters applied";
-    chipsWrap.appendChild(span);
-    return;
-  }
-
-  applied.forEach((ap) => {
-    const chip = doc.createElement("div");
-    chip.className = "filter-chip";
-    chip.style.padding = "6px 8px";
-    chip.style.borderRadius = "999px";
-    chip.style.background = "#eee";
-    chip.style.display = "inline-flex";
-    chip.style.alignItems = "center";
-    chip.style.gap = "8px";
-    chip.textContent = `${ap.type}: ${ap.value}`;
-
-    const x = doc.createElement("button");
-    x.type = "button";
-    x.textContent = "✕";
-    x.style.marginLeft = "6px";
-    x.style.border = "0";
-    x.style.background = "transparent";
-    x.style.cursor = "pointer";
-    x.addEventListener("click", () => {
-      // remove from state
-      if (ap.type === "brand") state.filters.brand.delete(ap.value);
-      if (ap.type === "model") state.filters.model.delete(ap.value);
-      if (ap.type === "category") state.filters.category.delete(ap.value);
-      if (ap.type === "tag") state.filters.tags.delete(ap.value);
-      // update UI chips and re-render
-      populateFilterChips();
-      renderFilterChips();
-      onFiltersChanged();
-    });
-
-    chip.appendChild(x);
-    chipsWrap.appendChild(chip);
-  });
-}
-
-/* helper to toggle Set */
-function toggleSet(setObj, val) {
-  if (setObj.has(val)) setObj.delete(val);
-  else setObj.add(val);
-}
-
-/* Called whenever filters changed */
-function onFiltersChanged() {
-  renderStrips(); // re-render strips according to filters
-  renderFilterChips();
-}
-
-/* ============
-   Core: Filtering logic for parts
-   ============ */
-function partMatchesFilters(part) {
-  // If no filters, everything matches
-  const f = state.filters;
-
-  // brand filter: any selected brand must match at least one compatibility
-  if (f.brand.size > 0) {
-    const ok = Array.from(f.brand).some((b) => (part.compatibilities || []).some((c) => c.brand === b));
-    if (!ok) return false;
-  }
-
-  // model filter
-  if (f.model.size > 0) {
-    const ok = Array.from(f.model).some((m) => (part.compatibilities || []).some((c) => c.model === m));
-    if (!ok) return false;
-  }
-
-  // category filter
-  if (f.category.size > 0) {
-    if (!f.category.has(part.category)) return false;
-  }
-
-  // tags filter
-  if (f.tags.size > 0) {
-    const ok = Array.from(f.tags).some((t) => (part.tags || []).includes(t));
-    if (!ok) return false;
-  }
-
-  return true;
-}
-
-/* ============
-   Rendering: Strips / Sections
-   ============ */
-
-/**
- * Create a strip DOM element for given title and list of parts.
- * `id` used for view-all.
- */
-function makeStrip({ id, title, parts = [] }) {
-  const section = doc.createElement("section");
-  section.className = "store-strip";
-  section.setAttribute("aria-labelledby", `${id}-heading`);
-
-  const header = doc.createElement("div");
-  header.className = "strip-header";
-  header.innerHTML = `<h3 id="${id}-heading" class="strip-title">${title}</h3>`;
-  const actions = doc.createElement("div");
-  actions.className = "strip-actions";
-  const viewAllBtn = doc.createElement("button");
-  viewAllBtn.className = "strip-viewall";
-  viewAllBtn.type = "button";
-  viewAllBtn.textContent = "View all";
-  viewAllBtn.addEventListener("click", () => openSectionModal({ id, title, parts }));
-  actions.appendChild(viewAllBtn);
-  header.appendChild(actions);
-
-  const track = doc.createElement("div");
-  track.className = "strip-track";
-  track.setAttribute("role", "list");
-
-  // create cards
-  parts.forEach((part) => {
-    const { min, max } = minMaxPrice(part.variants || []);
-    const card = doc.createElement("article");
-    card.className = "strip-card";
-    card.tabIndex = 0;
-    card.role = "listitem";
-    card.ariaLabel = `${part.name}, ₦${min}${min !== max ? " — ₦" + max : ""}`;
-
-    card.innerHTML = `
-      <div class="card-thumb"><img src="${part.image}" alt="${escapeHtml(part.name)}"></div>
-      <div>
-        <div class="card-title">${escapeHtml(part.name)}</div>
-        <div class="card-desc">${escapeHtml(part.description)}</div>
-      </div>
-      <div class="card-meta">
-        <div class="card-price">₦${min}${min !== max ? " — ₦" + max : ""}</div>
-        <div class="badge ${part.variants && part.variants.some(v => /in stock/i.test(v.availability)) ? "in-stock" : ""}">${part.variants && part.variants[0] ? part.variants[0].availability : "—"}</div>
-      </div>
-      <div class="card-actions">
-        <button class="card-btn view" data-id="${part.id}" type="button">View Details</button>
-        <button class="card-btn add" data-id="${part.id}" type="button">Add to Cart</button>
-      </div>
-    `;
-    track.appendChild(card);
-  });
-
-  section.appendChild(header);
-  section.appendChild(track);
-  return section;
-}
-
-function clearStoreContent() {
-  stripContainerRoot.innerHTML = "";
-}
-
-/**
- * Render strips according to layout:
- * 1) Top: a "Highlights" strip containing featured + new-arrivals (dedupe)
- * 2) Middle: 5 category strips (use storeData category property)
- * 3) Bottom: "Others" - create one strip per top tags (MAX_TAG_STRIPS)
- *
- * Apply filters: only parts that match `partMatchesFilters` are shown.
- */
-function renderStrips() {
-  clearStoreContent();
-
-  // 1) Highlights (featured or new-arrivals)
-  const highlights = uniq(storeData.filter(p => (p.tracks || []).some(t => ["featured", "new-arrivals"].includes(t))).filter(partMatchesFilters));
-  if (highlights.length > 0) {
-    stripContainerRoot.appendChild(makeStrip({ id: "highlights", title: "Highlights", parts: highlights }));
-  }
-
-  // 2) Category sections (use CATEGORIES order)
-  CATEGORIES.forEach((cat) => {
-    const parts = storeData.filter(p => p.category === cat && partMatchesFilters(p));
-    if (parts.length > 0) {
-      //const id = `cat-${cat.toLowerCase().replace(/\s+/g, "-")}`;
-      stripContainerRoot.appendChild(makeStrip({ id, title: cat, parts }));
     }
   });
 
-  // 3) Others: build strips by tags
-  const tags = getAllTags().slice(0, MAX_TAG_STRIPS);
-  if (tags.length > 0) {
-    const othersTitle = doc.createElement("h2");
-    othersTitle.className = "strip-title";
-    othersTitle.style.margin = "12px 0 6px";
-    othersTitle.textContent = "Others";
-    stripContainerRoot.appendChild(othersTitle);
-    tags.forEach((tag) => {
-      const parts = storeData.filter(p => (p.tags || []).includes(tag) && partMatchesFilters(p));
-      if (parts.length > 0) {
-        stripContainerRoot.appendChild(makeStrip({ id: `tag-${tag}`, title: tag, parts }));
-      }
-    });
-  }
-
-  // ensure event delegations still work (we use delegation below)
+  state.strips.tagList = Array.from(tagSet).sort();
 }
 
-/* ============
-   Modals: Section expand & Details
-   ============ */
+/* =========================
+   Rendering helpers
+   ========================= */
 
-function openSectionModal({ id, title, parts }) {
-  if (!sectionModal) return;
-  const panel = sectionModal.querySelector(".modal-panel");
-  sectionModal.classList.add("show");
-  // populate
-  panel.querySelector(".modal-title")?.textContent && (panel.querySelector(".modal-title").textContent = `${title} — All items`);
-  const grid = panel.querySelector(".modal-grid");
-  if (!grid) return;
-  grid.innerHTML = "";
-  parts.forEach((p) => {
-    const item = doc.createElement("article");
-    item.style.background = "#fff";
-    item.style.padding = "12px";
-    item.style.borderRadius = "10px";
-    item.style.boxShadow = "var(--card-shadow)";
-    item.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:flex-start">
-        <img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:220px;height:140px;object-fit:cover;border-radius:8px">
-        <div>
-          <h3 style="margin:0;color:var(--navy)">${escapeHtml(p.name)}</h3>
-          <p style="color:var(--muted);margin:6px 0">${escapeHtml(p.description)}</p>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn-order" data-id="${p.id}">Add to cart</button>
-            <button class="btn-secondary" data-id="${p.id}">View Details</button>
-          </div>
-        </div>
+/** produce a strip-card element (card is clickable) */
+function createStripCard(part) {
+  const el = document.createElement("article");
+  el.className = "strip-card";
+  el.tabIndex = 0;
+  el.setAttribute("role", "listitem");
+  el.dataset.partId = String(part.id);
+  el.innerHTML = `
+    <div class="card-thumb"><img src="${escapeHtml(part.image)}" alt="${escapeHtml(part.name)}"></div>
+    <div>
+      <div class="card-title">${escapeHtml(part.name)}</div>
+      <div class="card-desc">${escapeHtml(part.description)}</div>
+    </div>
+    <div class="card-meta">
+      <div class="card-price">${estimatePriceRange(part)}</div>
+      <div class="badge ${hasInStockVariant(part) ? "in-stock" : ""}">${hasInStockVariant(part) ? "In stock" : "Check"}</div>
+    </div>
+  `;
+  // clicking anywhere on card opens details modal (not buttons)
+  el.addEventListener("click", () => openDetailsModalForPart(part.id));
+  el.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      openDetailsModalForPart(part.id);
+    }
+  });
+  return el;
+}
+
+function estimatePriceRange(part) {
+  const vs = (part.variants || []).map(v => Number(v.price||0)).filter(Boolean);
+  if (!vs.length) return "—";
+  const mn = Math.min(...vs), mx = Math.max(...vs);
+  return mn === mx ? formatCurrency(mn) : `${formatCurrency(mn)} — ${formatCurrency(mx)}`;
+}
+function hasInStockVariant(part) {
+  return (part.variants || []).some(v => String(v.availability||"").toLowerCase().includes("in"));
+}
+
+/* =========================
+   Render the three sections:
+   - Top (Featured) — uses existing .store-strip where title includes "Featured"
+   - Middle (Categories) — ensure the five canonical categories exist in DOM; if not create them
+   - Bottom (Others) — ensure an #others-section exists; generate a strip per tag in state.strips.tagList
+   Parts may appear in multiple tracks
+   ========================= */
+function ensureSectionsExist() {
+  // find existing store-strip for Featured; if missing, create and append near top of main
+  const mainRoot = document.querySelector(".store-main") || document.querySelector("main") || document.body;
+  // FEATURED: look for strip-title containing "featured"
+  let featuredStrip = Array.from(document.querySelectorAll(".store-strip")).find(s => (s.querySelector(".strip-title")?.textContent||"").toLowerCase().includes("featured"));
+  if (!featuredStrip) {
+    featuredStrip = createStoreStrip("Featured");
+    // insert at top of mainRoot
+    mainRoot.insertAdjacentElement("afterbegin", featuredStrip);
+  }
+
+  // MIDDLE: ensure canonical category strips exist in the order specified
+  state.canonicalCategories.forEach(catName => {
+    let strip = Array.from(document.querySelectorAll(".store-strip")).find(s => (s.querySelector(".strip-title")?.textContent||"") === catName);
+    if (!strip) {
+      strip = createStoreStrip(catName);
+      // Append after featured strip (so order: featured, then categories)
+      featuredStrip.insertAdjacentElement("afterend", strip);
+    }
+  });
+
+  // BOTTOM: ensure others-section container exists after categories
+  othersSectionContainer = document.getElementById("others-section");
+  if (!othersSectionContainer) {
+    othersSectionContainer = document.createElement("div");
+    othersSectionContainer.id = "others-section";
+    // create heading
+    const heading = document.createElement("div");
+    heading.style.display = "flex";
+    heading.style.alignItems = "center";
+    heading.style.justifyContent = "space-between";
+    heading.style.padding = "0 1rem";
+    heading.innerHTML = `<h3 style="margin:12px 0;color:var(--navy);font-weight:700">Others</h3>`;
+    mainRoot.appendChild(heading);
+    mainRoot.appendChild(othersSectionContainer);
+  }
+}
+
+/** create a .store-strip element with given title text */
+function createStoreStrip(titleText) {
+  const section = document.createElement("section");
+  section.className = "store-strip";
+  section.innerHTML = `
+    <div class="strip-header">
+      <h3 class="strip-title">${escapeHtml(titleText)}</h3>
+      <div class="strip-actions">
+        <button class="strip-viewall" type="button">View all</button>
       </div>
-    `;
-    grid.appendChild(item);
+    </div>
+    <div class="strip-track" role="list"></div>
+  `;
+  return section;
+}
+
+/* render all strips (featured, categories, tag-based others) */
+function renderAllStrips() {
+  // ensure sections exist
+  ensureSectionsExist();
+  // rebuild strips mapping
+  buildStripsMapping();
+
+  // FEATURED strip
+  const featuredStripEl = Array.from(document.querySelectorAll(".store-strip")).find(s => (s.querySelector(".strip-title")?.textContent||"").toLowerCase().includes("featured"));
+  if (featuredStripEl) {
+    const track = featuredStripEl.querySelector(".strip-track");
+    renderTrackByIds(track, state.strips.featured);
+  }
+
+  // MIDDLE: canonical categories
+  state.canonicalCategories.forEach(cat => {
+    // find matching strip element for this title
+    let strip = Array.from(document.querySelectorAll(".store-strip")).find(s => (s.querySelector(".strip-title")?.textContent||"") === cat);
+    if (!strip) {
+      // create if missing and append after featured
+      strip = createStoreStrip(cat);
+      const featuredStrip = featuredStripEl || document.querySelector(".store-strip");
+      featuredStrip?.insertAdjacentElement("afterend", strip);
+    }
+    const ids = (state.strips.categories[cat] || []).slice();
+    renderTrackByIds(strip.querySelector(".strip-track"), ids);
+  });
+
+  // BOTTOM: Others (one strip per tag)
+  // clear existing content in othersSectionContainer and add strips for tags
+  othersSectionContainer.innerHTML = "";
+  state.strips.tagList.forEach(tag => {
+    const strip = createStoreStrip(tag);
+    // override the header title to be tag name (already done)
+    othersSectionContainer.appendChild(strip);
+    const ids = (state.strips.othersByTag[tag] || []).slice();
+    renderTrackByIds(strip.querySelector(".strip-track"), ids);
+  });
+
+  // attach handlers for View All buttons (delegation)
+  attachStripViewAllHandlers();
+}
+
+/** Render one strip-track given array of part ids (applies current filters) */
+function renderTrackByIds(trackEl, ids = []) {
+  if (!trackEl) return;
+  trackEl.innerHTML = "";
+  // map ids -> parts
+  const parts = ids.map(id => state.parts.find(p => p.id === id)).filter(Boolean);
+  // apply global filters (search + selected filters)
+  const filtered = parts.filter(p => applyFiltersToPart(p));
+  if (!filtered.length) {
+    trackEl.innerHTML = `<div class="strip-empty">No items match current filters.</div>`;
+    return;
+  }
+  filtered.slice(0, 12).forEach(p => {
+    const card = createStripCard(p);
+    trackEl.appendChild(card);
   });
 }
 
-function closeSectionModal() {
-  sectionModal?.classList.remove("show");
+/* =========================
+   Filtering logic
+   - Filter modes: category | brand | model | others (tags)
+   - selected filters stored in state.filters.selected
+   - applyFiltersToPart returns true if a part should be shown in a track
+   ========================= */
+function applyFiltersToPart(part) {
+  const s = state.filters.selected;
+  const searchQ = (searchInput?.value || "").trim().toLowerCase();
+  // search test
+  if (searchQ) {
+    const hay = `${part.name} ${part.description} ${part.category} ${(part.tags||[]).join(" ")} ${(part.compatibilities||[]).map(c=>c.brand+" "+c.model).join(" ")}`.toLowerCase();
+    if (!hay.includes(searchQ)) return false;
+  }
+  // category filters
+  if (s.category.size > 0 && !s.category.has(part.category)) return false;
+  // brand filters
+  if (s.brand.size > 0) {
+    // check compatibilities and variants
+    const brands = new Set((part.compatibilities || []).map(c => c.brand).concat((part.variants||[]).map(v => v.brand)));
+    const ok = [...s.brand].some(b => brands.has(b));
+    if (!ok) return false;
+  }
+  // model filters
+  if (s.model.size > 0) {
+    const models = new Set((part.compatibilities || []).map(c => c.model).concat((part.variants||[]).map(v => v.model)));
+    const ok = [...s.model].some(m => models.has(m));
+    if (!ok) return false;
+  }
+  // tags (others mode)
+  if (s.tags.size > 0) {
+    const pTags = new Set(part.tags || []);
+    const ok = [...s.tags].some(t => pTags.has(t));
+    if (!ok) return false;
+  }
+  return true;
 }
 
-function openDetailsModal(part) {
-  if (!detailsModal) return;
-  detailsModal.classList.add("show");
+/* =========================
+   Top filters row (the existing .category-filter buttons)
+   - The same `.categories` container is reused
+   - When filter mode is 'others', we populate the buttons from tags.
+   ========================= */
+function populateTopFilterButtons() {
+  const container = categoriesRow;
+  if (!container) return;
+  container.innerHTML = "";
+  // 'All' button always present to clear mode selections
+  const allBtn = document.createElement("button");
+  allBtn.className = "category-filter active";
+  allBtn.textContent = "All";
+  allBtn.addEventListener("click", () => {
+    // clear selected for current mode
+    clearSelectedForMode(state.filters.mode);
+    renderAllStrips();
+    updateAppliedFiltersUI();
+  });
+  container.appendChild(allBtn);
+
+  // values depend on mode
+  let values = [];
+  if (state.filters.mode === "category") {
+    values = Array.from(new Set(state.parts.map(p => p.category))).sort();
+  } else if (state.filters.mode === "brand") {
+    const set = new Set();
+    state.parts.forEach(p => (p.compatibilities||[]).forEach(c => c.brand && set.add(c.brand)));
+    values = Array.from(set).sort();
+  } else if (state.filters.mode === "model") {
+    const set = new Set();
+    state.parts.forEach(p => (p.compatibilities||[]).forEach(c => c.model && set.add(c.model)));
+    values = Array.from(set).sort();
+  } else if (state.filters.mode === "others") {
+    // tags
+    values = state.strips.tagList.slice();
+  }
+
+  values.forEach(v => {
+    const btn = document.createElement("button");
+    btn.className = "category-filter";
+    btn.textContent = v;
+    btn.dataset.value = v;
+    btn.addEventListener("click", () => {
+      // toggle selection for current mode
+      toggleSelectionForMode(state.filters.mode, v);
+      // refresh UI
+      populateTopFilterButtons();
+      renderAllStrips();
+      updateAppliedFiltersUI();
+    });
+    // visually active if selected
+    let active = false;
+    if (state.filters.mode === "category" && state.filters.selected.category.has(v)) active = true;
+    if (state.filters.mode === "brand" && state.filters.selected.brand.has(v)) active = true;
+    if (state.filters.mode === "model" && state.filters.selected.model.has(v)) active = true;
+    if (state.filters.mode === "others" && state.filters.selected.tags.has(v)) active = true;
+    if (active) btn.classList.add("active"); else btn.classList.remove("active");
+    container.appendChild(btn);
+  });
+}
+
+function toggleSelectionForMode(mode, value) {
+  if (mode === "category") {
+    if (state.filters.selected.category.has(value)) state.filters.selected.category.delete(value); else state.filters.selected.category.add(value);
+  } else if (mode === "brand") {
+    if (state.filters.selected.brand.has(value)) state.filters.selected.brand.delete(value); else state.filters.selected.brand.add(value);
+  } else if (mode === "model") {
+    if (state.filters.selected.model.has(value)) state.filters.selected.model.delete(value); else state.filters.selected.model.add(value);
+  } else if (mode === "others") {
+    if (state.filters.selected.tags.has(value)) state.filters.selected.tags.delete(value); else state.filters.selected.tags.add(value);
+  }
+}
+
+function clearSelectedForMode(mode) {
+  if (mode === "category") state.filters.selected.category = new Set();
+  if (mode === "brand") state.filters.selected.brand = new Set();
+  if (mode === "model") state.filters.selected.model = new Set();
+  if (mode === "others") state.filters.selected.tags = new Set();
+}
+
+/* show applied filters chips UI below the categories row */
+function mountAppliedFiltersUI() {
+  appliedFiltersContainer = document.createElement("div");
+  appliedFiltersContainer.className = "applied-filters-container";
+  appliedFiltersContainer.style.padding = "0 1rem 0.5rem";
+  appliedFiltersContainer.innerHTML = `
+    <label style="display:none;align-items:center;gap:8px;cursor:pointer;" id="see-filters-label">
+      <input type="checkbox" class="see-filters-checkbox" />
+      <span style="font-size:0.95rem;color:var(--muted)">See Filters</span>
+    </label>
+    <div class="applied-chips" style="display:inline-flex;gap:8px;margin-left:14px;flex-wrap:wrap"></div>
+  `;
+  categoriesRow.insertAdjacentElement("afterend", appliedFiltersContainer);
+  const checkbox = appliedFiltersContainer.querySelector(".see-filters-checkbox");
+  const chips = appliedFiltersContainer.querySelector(".applied-chips");
+  chips.style.display = "none";
+  checkbox.addEventListener("change", (e) => {
+    chips.style.display = e.target.checked ? "inline-flex" : "none";
+  });
+}
+function updateAppliedFiltersUI(){
+  if (!appliedFiltersContainer) return;
+  const chips = appliedFiltersContainer.querySelector(".applied-chips");
+  chips.innerHTML = "";
+  const arr = [];
+  state.filters.selected.brand.forEach(v => arr.push({type:"brand", value:v}));
+  state.filters.selected.model.forEach(v => arr.push({type:"model", value:v}));
+  state.filters.selected.category.forEach(v => arr.push({type:"category", value:v}));
+  state.filters.selected.tags.forEach(v => arr.push({type:"tag", value:v}));
+  if (!arr.length) {
+    appliedFiltersContainer.style.display = "none";
+    return;
+  } else {
+    document.querySelector("#see-filters-label").style.display = "inline-flex";
+  }
+  appliedFiltersContainer.style.display = "block";
+  arr.forEach(item => {
+    const b = document.createElement("button");
+    b.className = "chip active";
+    b.textContent = `${item.type}: ${item.value} ×`;
+    b.addEventListener("click", () => {
+      // remove
+      if (item.type === "brand") state.filters.selected.brand.delete(item.value);
+      if (item.type === "model") state.filters.selected.model.delete(item.value);
+      if (item.type === "category") state.filters.selected.category.delete(item.value);
+      if (item.type === "tag") state.filters.selected.tags.delete(item.value);
+      updateAppliedFiltersUI();
+      populateTopFilterButtons();
+      renderAllStrips();
+    });
+    chips.appendChild(b);
+  });
+}
+
+/* =========================
+   Filter dropdown (filterBtn) — choose mode including "Others"
+   ========================= */
+function mountFilterDropdown() {
+  // guard against double-mount
+  if (document.body.dataset.filtersMounted === "1") return;
+  document.body.dataset.filtersMounted = "1";
+
+  // ensure filterBtn exists
+  const filterBtn = document.querySelector(".filter-btn"); // update selector if needed
+  if (!filterBtn) {
+    console.error("mountFilterDropdown: filterBtn not found");
+    return;
+  }
+
+  // create menu
+  const menu = document.createElement("div");
+  menu.className = "filters-dropdown";
+  Object.assign(menu.style, {
+    position: "absolute",
+    zIndex: "9999",
+    background: "#fff",
+    boxShadow: "0 8px 30px rgba(11,58,111,0.12)",
+    borderRadius: "8px",
+    padding: "8px",
+    minWidth: "180px",
+    display: "none" // start hidden
+  });
+  menu.innerHTML = `
+    <button class="fm" data-mode="category" style="display:block;padding:8px;border:0;background:transparent;text-align:left">By Category</button>
+    <button class="fm" data-mode="brand" style="display:block;padding:8px;border:0;background:transparent;text-align:left">By Brand</button>
+    <button class="fm" data-mode="model" style="display:block;padding:8px;border:0;background:transparent;text-align:left">By Model</button>
+    <button class="fm" data-mode="others" style="display:block;padding:8px;border:0;background:transparent;text-align:left">Others (tags)</button>
+  `;
+  document.body.appendChild(menu);
+
+  // helper to position menu under the button
+  function positionMenu() {
+    const rect = filterBtn.getBoundingClientRect();
+    menu.style.left = `${rect.left + window.scrollX}px`;
+    menu.style.top = `${rect.bottom + window.scrollY + 8}px`;
+  }
+
+  // reliable toggle using computed style
+  function isHidden() {
+    return window.getComputedStyle(menu).display === "none";
+  }
+  function showMenu() {
+    positionMenu();
+    menu.style.display = "block";
+  }
+  function hideMenu() {
+    menu.style.display = "none";
+  }
+
+  // named handler (allows safe remove later if needed)
+  function onFilterBtnClick(e) {
+    e.stopPropagation(); // prevent document click from also firing
+    if (isHidden()) {
+      showMenu();
+      // update position if window resized or scrolled while open
+      window.addEventListener("resize", positionMenu);
+      window.addEventListener("scroll", positionMenu, { passive: true });
+    } else {
+      hideMenu();
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu);
+    }
+  }
+
+  // attach once
+  filterBtn.addEventListener("click", onFilterBtnClick);
+
+  // click inside menu
+  menu.addEventListener("click", (e) => {
+    const btn = e.target.closest(".fm");
+    if (!btn) return;
+    const mode = btn.dataset.mode;
+    state.filters.mode = mode;
+    populateTopFilterButtons();
+    updateAppliedFiltersUI();
+    hideMenu();
+    window.removeEventListener("resize", positionMenu);
+    window.removeEventListener("scroll", positionMenu);
+  });
+
+  // click outside -> hide
+  document.addEventListener("click", (e) => {
+    // if click was on the filter button (or its children), don't hide
+    if (e.target === filterBtn || filterBtn.contains(e.target)) return;
+    if (menu.contains(e.target)) return;
+    if (!isHidden()) {
+      hideMenu();
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu);
+    }
+  });
+
+  // keep a reference for debugging if needed
+  window.__filtersMenu = { menu, filterBtn, onFilterBtnClick };
+}
+
+
+/* =========================
+   Section View All handlers (delegated)
+   ========================= */
+function attachStripViewAllHandlers(){
+  // clear existing to avoid duplicates
+  document.querySelectorAll(".strip-viewall").forEach(btn => {
+    btn.removeEventListener("click", onStripViewAll);
+    btn.addEventListener("click", onStripViewAll);
+  });
+}
+function onStripViewAll(e){
+  const section = e.currentTarget.closest(".store-strip");
+  if (!section) return;
+  const title = section.querySelector(".strip-title")?.textContent?.trim() || "Items";
+  openSectionModal(title);
+}
+function openSectionModal(title){
+  // populate modal grid with all parts matching this title as category OR tag
+  const grid = sectionModal.querySelector(".modal-grid");
+  grid.innerHTML = "";
+  let parts = [];
+  // if matches canonical category or any category in mapping -> treat as category
+  if (state.strips.categories[title]) {
+    parts = state.strips.categories[title].map(id => state.parts.find(p => p.id===id)).filter(Boolean);
+  } else if (state.strips.othersByTag[title]) {
+    parts = state.strips.othersByTag[title].map(id => state.parts.find(p => p.id===id)).filter(Boolean);
+  } else if (title.toLowerCase().includes("featured")) {
+    parts = state.strips.featured.map(id => state.parts.find(p => p.id===id)).filter(Boolean);
+  }
+  // apply current filters on parts
+  parts = parts.filter(p => applyFiltersToPart(p));
+  if (!parts.length) {
+    grid.innerHTML = `<div style="padding:12px">No items found for this section.</div>`;
+  } else {
+    parts.forEach(p => {
+      const art = document.createElement("article");
+      art.style.background = "#fff";
+      art.style.padding = "12px";
+      art.style.borderRadius = "10px";
+      art.style.boxShadow = "var(--card-shadow)";
+      art.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <img src="${escapeHtml(p.image)}" style="width:220px;height:140px;object-fit:cover;border-radius:8px">
+          <div style="flex:1">
+            <h3 style="margin:0;color:var(--navy)">${escapeHtml(p.name)}</h3>
+            <p style="color:var(--muted);margin:6px 0">${escapeHtml(p.description)}</p>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn-order modal-add" data-part-id="${p.id}">Add to cart</button>
+              <button class="btn-secondary modal-view" data-part-id="${p.id}">View Details</button>
+            </div>
+          </div>
+        </div>
+      `;
+      grid.appendChild(art);
+    });
+  }
+  // hook modal buttons via delegation
+  sectionModal.classList.add("show");
+  document.body.classList.add("modal-open");
+  // attach delegation once
+  sectionModal.onclick = (ev) => {
+    const add = ev.target.closest(".modal-add");
+    const view = ev.target.closest(".modal-view");
+    if (add) {
+      const id = add.dataset.partId;
+      closeModal(sectionModal);
+      openDetailsModalForPart(id, { startAction: "add-to-cart" });
+    } else if (view) {
+      const id = view.dataset.partId;
+      openDetailsModalForPart(id);
+    } else if (ev.target.classList.contains("modal-close")) {
+      closeModal(sectionModal);
+    }
+  };
+}
+
+/* =========================
+   Details modal & selection flow
+   - The details modal content and flow remain the same as your previous implementation.
+   - openDetailsModalForPart(partId, opts) will populate modal-panel and open it.
+   ========================= */
+function openDetailsModalForPart(partId, opts = {}) {
+  const part = state.parts.find(p => String(p.id) === String(partId));
+  if (!part) return;
   const panel = detailsModal.querySelector(".modal-panel");
-  // build details body
+  panel.innerHTML = ""; // rebuild
   panel.innerHTML = `
     <div class="modal-header">
       <h2 class="modal-title">${escapeHtml(part.name)}</h2>
       <button class="modal-close" type="button" aria-label="Close product details">✕</button>
     </div>
     <div class="details-body">
-      <div class="details-thumb"><img src="${part.image}" alt="${escapeHtml(part.name)}"></div>
+      <div class="details-thumb"><img src="${escapeHtml(part.image)}" alt="${escapeHtml(part.name)}"></div>
       <div class="details-info">
         <h3>${escapeHtml(part.name)}</h3>
-        <p class="details-desc">${escapeHtml(part.description)}</p>
-        <div class="details-compat"><strong>Compatibilities:</strong>
-          <ul>
-            ${(part.compatibilities || []).map(c => `<li>${escapeHtml(c.brand)} — ${escapeHtml(c.model)} — ${escapeHtml(String((c.years||[]).join(", ")))}</li>`).join("")}
-          </ul>
-        </div>
-        <div class="details-pricing"><strong>Price range:</strong> ₦${minMaxPrice(part.variants).min}${minMaxPrice(part.variants).min !== minMaxPrice(part.variants).max ? " — ₦" + minMaxPrice(part.variants).max : ""}</div>
-        <div class="details-actions">
-          <button class="btn-order" data-id="${part.id}">Add To Cart</button>
-          <button class="btn-secondary quick-order" data-id="${part.id}">Place A Quick Order</button>
-        </div>
-      </div>
-    </div>`;
-  // After injecting, attach listeners for modal-close, order buttons (delegated below too)
-}
+        <p style="color:var(--muted)">${escapeHtml(part.description)}</p>
+        <div class="details-compat"><strong>Compatibility:</strong> ${ (part.compatibilities || []).map(c => `${c.brand} ${c.model} (${Array.isArray(c.years)?c.years.join(","):c.years})`).join("; ") }</div>
+        <div class="details-pricing" style="margin-top:8px"><strong>Price range:</strong> ${estimatePriceRange(part)}</div>
 
-/* close details modal */
-function closeDetailsModal() {
-  detailsModal?.classList.remove("show");
-}
-
-/* ============
-   Quick flow: brand/model/year selection & confirmation
-   - mode: "add-to-cart" or "quick-order"
-   - origin: where to return after adding (home or section)
-   ============ */
-
-/**
- * showVariantPicker: opens a tiny modal (re-using detailsModal) to select brand/model/year
- * returns Promise that resolves to chosen variant {brand,model,year,price}
- */
-function showVariantPicker(part, preSelections = { brand: null, model: null }, mode = "add-to-cart") {
-  return new Promise((resolve, reject) => {
-    // Build UI inside detailsModal
-    if (!detailsModal) return reject(new Error("UI not available"));
-    detailsModal.classList.add("show");
-    const panel = detailsModal.querySelector(".modal-panel");
-    panel.innerHTML = `
-      <div class="modal-header">
-        <h2 class="modal-title">Select variant — ${escapeHtml(part.name)}</h2>
-        <button class="modal-close" type="button" aria-label="Close">✕</button>
-      </div>
-      <div style="display:flex;gap:12px;flex-direction:column">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <div>
-            <label>Brand</label><br/>
-            <select id="variant-brand"></select>
+        <div style="margin-top:12px">
+          <label style="display:block;margin-bottom:6px"><strong>Select brand & model</strong></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="sel-brand" aria-label="Select brand"><option value="">Select brand</option></select>
+            <select class="sel-model" aria-label="Select model"><option value="">Select model</option></select>
+            <select class="sel-year" aria-label="Select year" style="display:none"><option value="">Select year</option></select>
           </div>
-          <div>
-            <label>Model</label><br/>
-            <select id="variant-model"></select>
-          </div>
-          <div id="year-wrap" style="display:none">
-            <label>Year</label><br/>
-            <select id="variant-year"></select>
-          </div>
+          <div class="sel-warning" style="color:var(--muted);font-size:0.95rem;margin-top:8px"></div>
         </div>
 
-        <div id="variant-preview" style="margin-top:12px"></div>
-
-        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button id="variant-cancel" class="btn-secondary" type="button">Cancel</button>
-          <button id="variant-confirm" class="btn-order" type="button">Confirm</button>
-        </div>
-      </div>
-    `;
-
-    // compute brand/model options from part.compatibilities and part.variants
-    const comp = part.compatibilities || [];
-    const brands = uniq(comp.map(c => c.brand));
-    const brandSelect = panel.querySelector("#variant-brand");
-    const modelSelect = panel.querySelector("#variant-model");
-    const yearSelect = panel.querySelector("#variant-year");
-    const yearWrap = panel.querySelector("#year-wrap");
-    const preview = panel.querySelector("#variant-preview");
-
-    // fill brands
-    brandSelect.innerHTML = `<option value="">(choose)</option>` + brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join("");
-    // preselect if filter context provides only one brand
-    if (preSelections.brand && brands.includes(preSelections.brand)) brandSelect.value = preSelections.brand;
-
-    // model fill function
-    function fillModelsForBrand(b) {
-      const models = uniq((comp.filter(c => !b || c.brand === b).map(c => c.model)));
-      modelSelect.innerHTML = `<option value="">(choose)</option>` + models.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
-      if (preSelections.model && models.includes(preSelections.model)) modelSelect.value = preSelections.model;
-    }
-
-    function fillYearsForBrandModel(b, m) {
-      const years = uniq((part.variants || []).filter(v => (!b || v.brand === b) && (!m || v.model === m)).map(v => v.year));
-      if (years.length === 0) {
-        yearWrap.style.display = "none";
-        yearSelect.innerHTML = "";
-        return;
-      }
-      yearWrap.style.display = "block";
-      yearSelect.innerHTML = `<option value="">(choose)</option>` + years.map(y => `<option value="${y}">${y}</option>`).join("");
-    }
-
-    function updatePreview() {
-      const b = brandSelect.value;
-      const m = modelSelect.value;
-      const y = yearSelect.value;
-      if (!b && !m && !y) {
-        preview.innerHTML = `<div style="color:var(--muted)">Pick brand, model and year to confirm.</div>`;
-        return;
-      }
-      // find a matching variant
-      const v = (part.variants || []).find(v => (!b || v.brand === b) && (!m || v.model === m) && (!y || String(v.year) === String(y)));
-      if (v) {
-        preview.innerHTML = `<div><strong>Selected:</strong> ${escapeHtml(v.brand)} ${escapeHtml(v.model)} — ${v.year} — ₦${v.price} — ${escapeHtml(v.availability)}</div>`;
-      } else {
-        preview.innerHTML = `<div style="color:var(--muted)">No exact price for selection yet. We'll confirm after you continue.</div>`;
-      }
-    }
-
-    // initial fills
-    fillModelsForBrand(brandSelect.value || null);
-    fillYearsForBrandModel(null, null);
-    updatePreview();
-
-    brandSelect.addEventListener("change", () => {
-      fillModelsForBrand(brandSelect.value || null);
-      fillYearsForBrandModel(brandSelect.value || null);
-      updatePreview();
-    });
-    modelSelect.addEventListener("change", () => {
-      fillYearsForBrandModel(brandSelect.value || null, modelSelect.value || null);
-      updatePreview();
-    });
-    yearSelect.addEventListener("change", updatePreview);
-
-    // cancel handler
-    panel.querySelector("#variant-cancel").addEventListener("click", () => {
-      closeDetailsModal();
-      reject(new Error("cancelled"));
-    });
-
-    // confirm handler
-    panel.querySelector("#variant-confirm").addEventListener("click", () => {
-      const b = brandSelect.value;
-      const m = modelSelect.value;
-      const y = yearSelect.value ? Number(yearSelect.value) : null;
-
-      // find best matching variant (prefer exact year)
-      let variant = null;
-      if (y !== null) {
-        variant = (part.variants || []).find(v => v.brand === b && v.model === m && Number(v.year) === y);
-      }
-      if (!variant) {
-        // pick any variant matching brand+model or brand only
-        variant = (part.variants || []).find(v => (b ? v.brand === b : true) && (m ? v.model === m : true));
-      }
-      if (!variant) {
-        // fallback to first variant
-        variant = (part.variants || [])[0] || null;
-      }
-      closeDetailsModal();
-      resolve(variant);
-    });
-
-    // close icon
-    panel.querySelector(".modal-close")?.addEventListener("click", () => {
-      closeDetailsModal();
-      reject(new Error("cancelled"));
-    });
-  });
-}
-
-/* ============
-   Cart operations
-   ============ */
-function addToCart(partId, variant, qty = 1) {
-  qty = Math.max(1, qty);
-  const existing = state.cart.find(it => it.partId === partId && deepVariantEqual(it.variant, variant));
-  if (existing) {
-    existing.qty += qty;
-  } else {
-    state.cart.push({ partId, variant, qty });
-  }
-  saveCart();
-  showToast("Added to cart");
-}
-
-function deepVariantEqual(a, b) {
-  if (!a || !b) return false;
-  return a.brand === b.brand && a.model === b.model && String(a.year) === String(b.year) && Number(a.price) === Number(b.price);
-}
-
-function removeCartItem(index) {
-  state.cart.splice(index, 1);
-  saveCart();
-  renderCartModal();
-}
-
-function changeCartQty(index, delta) {
-  const it = state.cart[index];
-  if (!it) return;
-  it.qty = clamp(it.qty + delta, 1, 999);
-  saveCart();
-  renderCartModal();
-}
-
-/* ============
-   Cart modal rendering (full-screen modal)
-   ============ */
-let cartModal = null;
-function ensureCartModal() {
-  if (cartModal) return cartModal;
-  cartModal = doc.createElement("div");
-  cartModal.id = "cart-panel";
-  cartModal.className = "modal";
-  cartModal.innerHTML = `
-    <div class="modal-panel" role="document" style="max-width:900px">
-      <div class="modal-header">
-        <h2 class="modal-title">Your cart</h2>
-        <button class="modal-close" type="button" aria-label="Close cart">✕</button>
-      </div>
-      <div class="cart-body" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;padding:8px"></div>
-      <div class="cart-footer" style="position:sticky;bottom:0;background:#fff;padding:12px;border-top:1px solid rgba(0,0,0,0.04);display:flex;justify-content:space-between;align-items:center;gap:12px">
-        <div class="cart-summary"></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-secondary cart-back">Back</button>
-          <button class="btn-order cart-place">Place Order</button>
+        <div class="details-actions" style="margin-top:12px">
+          <button class="btn-order" data-action="add">Add To Cart</button>
+          <button class="btn-secondary" data-action="quick-order">Place Quick Order</button>
         </div>
       </div>
     </div>
   `;
-  doc.body.appendChild(cartModal);
-  // close handlers
-  cartModal.querySelector(".modal-close").addEventListener("click", () => closeCartModal());
-  cartModal.querySelector(".cart-back").addEventListener("click", () => closeCartModal());
-  cartModal.querySelector(".cart-place").addEventListener("click", () => placeOrderFromCart());
-  return cartModal;
-}
 
-function openCartModal() {
-  ensureCartModal();
-  renderCartModal();
-  cartModal.classList.add("show");
+  // populate selects from variants
+  const variants = part.variants || [];
+  const selBrand = panel.querySelector(".sel-brand");
+  const selModel = panel.querySelector(".sel-model");
+  const selYear = panel.querySelector(".sel-year");
+  const selWarn = panel.querySelector(".sel-warning");
+
+  const brands = unique(variants.map(v => v.brand)).sort();
+  const modelsByBrand = {};
+  variants.forEach(v => {
+    if (!modelsByBrand[v.brand]) modelsByBrand[v.brand] = new Set();
+    modelsByBrand[v.brand].add(v.model);
+  });
+  Object.keys(modelsByBrand).forEach(b => modelsByBrand[b] = Array.from(modelsByBrand[b]).sort());
+
+  const yearsByBm = {};
+  variants.forEach(v => {
+    const key = `${v.brand}___${v.model}`;
+    if (!yearsByBm[key]) yearsByBm[key] = new Set();
+    yearsByBm[key].add(v.year);
+  });
+  Object.keys(yearsByBm).forEach(k => yearsByBm[k] = Array.from(yearsByBm[k]).sort());
+
+  brands.forEach(b => selBrand.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`));
+
+  function populateModels(brand) {
+    selModel.innerHTML = `<option value="">Select model</option>`;
+    selYear.style.display = "none";
+    if (!brand) return;
+    (modelsByBrand[brand]||[]).forEach(m => selModel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`));
+  }
+  function populateYears(brand, model) {
+    selYear.innerHTML = `<option value="">Select year</option>`;
+    if (!brand || !model) { selYear.style.display = "none"; return; }
+    const key = `${brand}___${model}`;
+    (yearsByBm[key]||[]).forEach(y => selYear.insertAdjacentHTML("beforeend", `<option value="${String(y)}">${String(y)}</option>`));
+    selYear.style.display = "inline-block";
+  }
+
+  // auto-deduce brand/model/year if current global filters narrow to single option
+  const autoBrand = deduceBrandFromFiltersAndPart(part);
+  const autoModel = deduceModelFromFiltersAndPart(part, autoBrand);
+  const autoYear = deduceYearFromFiltersAndPart(part, autoBrand, autoModel);
+
+  if (autoBrand) { selBrand.value = autoBrand; populateModels(autoBrand); }
+  if (autoModel) { selModel.value = autoModel; populateYears(selBrand.value, selModel.value); }
+  if (autoYear) { selYear.value = String(autoYear); }
+
+  selBrand.addEventListener("change", () => { populateModels(selBrand.value); selWarn.textContent = ""; });
+  selModel.addEventListener("change", () => { populateYears(selBrand.value, selModel.value); selWarn.textContent = ""; });
+
+  // actions
+  panel.querySelectorAll("[data-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      // final values (allow auto-deductions)
+      const brand = selBrand.value || deduceBrandFromFiltersAndPart(part);
+      const model = selModel.value || deduceModelFromFiltersAndPart(part, brand);
+      const year = (selYear.style.display !== "none" && selYear.value) ? selYear.value : deduceYearFromFiltersAndPart(part, brand, model);
+
+      if (!brand || !model || !year) {
+        selWarn.textContent = "Please select brand, model and year (or narrow filters first).";
+        return;
+      }
+
+      // find variant
+      const chosen = variants.find(v => String(v.brand) === String(brand) && String(v.model) === String(model) && String(v.year) === String(year));
+      if (!chosen) { selWarn.textContent = "Variant not available for this selection."; return; }
+
+      if (action === "add") {
+        openConfirmationModal({ part, variant: chosen, action: "add" });
+      } else if (action === "quick-order") {
+        openConfirmationModal({ part, variant: chosen, action: "quick-order" });
+      }
+    });
+  });
+
+  detailsModal.classList.add("show");
   document.body.classList.add("modal-open");
 }
 
-function closeCartModal() {
-  if (!cartModal) return;
-  cartModal.classList.remove("show");
-  document.body.classList.remove("modal-open");
+/* helper deduction functions (same behavior as requested) */
+function deduceBrandFromFiltersAndPart(part) {
+  const s = Array.from(state.filters.selected.brand);
+  const partBrands = unique((part.variants||[]).map(v => v.brand));
+  if (s.length === 1 && partBrands.includes(s[0])) return s[0];
+  if (partBrands.length === 1) return partBrands[0];
+  return null;
+}
+function deduceModelFromFiltersAndPart(part, brand) {
+  const s = Array.from(state.filters.selected.model);
+  const models = unique((part.variants||[]).filter(v => !brand || v.brand === brand).map(v => v.model));
+  if (s.length === 1 && models.includes(s[0])) return s[0];
+  if (models.length === 1) return models[0];
+  return null;
+}
+function deduceYearFromFiltersAndPart(part, brand, model) {
+  const yrs = unique((part.variants||[]).filter(v => (!brand || v.brand === brand) && (!model || v.model === model)).map(v => v.year));
+  if (yrs.length === 1) return yrs[0];
+  return null;
 }
 
-function renderCartModal() {
-  ensureCartModal();
-  const body = cartModal.querySelector(".cart-body");
-  const footerSummary = cartModal.querySelector(".cart-summary");
-  body.innerHTML = "";
-  if (state.cart.length === 0) {
-    body.innerHTML = `<div style="padding:12px;color:var(--muted)">Your cart is empty.</div>`;
-    footerSummary.innerHTML = "";
+/* Confirmation modal reused (very similar to your previous flow) */
+function openConfirmationModal({ part, variant, action }) {
+  let conf = document.getElementById("confirm-modal");
+  if (!conf) {
+    conf = document.createElement("div");
+    conf.id = "confirm-modal";
+    conf.className = "modal";
+    conf.innerHTML = `
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h3 class="modal-title">Confirm selection</h3>
+          <button class="modal-close">✕</button>
+        </div>
+        <div class="confirm-body"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn-secondary" data-action="cancel">Cancel</button>
+          <button class="btn-order" data-action="confirm">Ok</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(conf);
+    conf.querySelector(".modal-close").addEventListener("click", () => closeModal(conf));
+  }
+  conf.querySelector(".confirm-body").innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <img src="${escapeHtml(part.image)}" style="width:120px;height:80px;object-fit:cover;border-radius:8px"/>
+      <div>
+        <div style="font-weight:700">${escapeHtml(part.name)}</div>
+        <div style="color:var(--muted)">Selected: ${escapeHtml(variant.brand)} ${escapeHtml(variant.model)} — ${escapeHtml(String(variant.year))}</div>
+        <div style="margin-top:6px;font-weight:800">${formatCurrency(variant.price)}</div>
+      </div>
+    </div>
+  `;
+  conf.querySelectorAll("[data-action]").forEach(b => b.onclick = () => {
+    const a = b.dataset.action;
+    if (a === "cancel") { closeModal(conf); return; }
+    if (a === "confirm") {
+      if (action === "add") {
+        addToCart(part.id, variant, 1);
+        showToast(`${part.name} (${variant.brand} ${variant.model} ${variant.year}) added to cart`);
+        closeModal(conf);
+        closeModal(detailsModal);
+      } else if (action === "quick-order") {
+        const msg = buildWhatsAppMessageForQuickOrder(part, variant, 1);
+        openWhatsApp(msg);
+        closeModal(conf);
+        closeModal(detailsModal);
+      }
+    }
+  });
+  openModal(conf);
+}
+
+/* =========================
+   Cart functions (same semantics as before)
+   ========================= */
+function addToCart(partId, variant, qty=1) {
+  const existing = state.cart.items.find(it => it.partId === Number(partId) && it.brand === variant.brand && it.model === variant.model && String(it.year) === String(variant.year));
+  if (existing) existing.qty = Number(existing.qty) + Number(qty);
+  else {
+    const p = state.parts.find(x => x.id === Number(partId));
+    state.cart.items.push({
+      partId: Number(partId),
+      name: p.name,
+      image: p.image,
+      brand: variant.brand,
+      model: variant.model,
+      year: String(variant.year),
+      price: Number(variant.price),
+      qty: Number(qty)
+    });
+  }
+  persistCart();
+  updateCartUI();
+}
+
+function updateCartUI() {
+  const total = state.cart.items.reduce((s,it) => s + Number(it.qty), 0);
+  document.querySelectorAll(".cart-count").forEach(el => el.textContent = ` (${total})`);
+}
+
+/* Cart modal open (keeps your previously defined layout) */
+function openCartModal() {
+  if (!cartModal) {
+    cartModal = document.createElement("div");
+    cartModal.id = "cart-modal";
+    cartModal.className = "modal";
+    cartModal.innerHTML = `
+      <div class="modal-panel" style="max-width:980px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Cart</h2>
+          <button class="modal-close" aria-label="Close cart">✕</button>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1;max-height:60vh;overflow:auto">
+            <div id="cart-items-container"></div>
+          </div>
+          <div style="width:320px;flex-shrink:0">
+            <div style="background:#fff;padding:12px;border-radius:8px;box-shadow:var(--card-shadow)">
+              <h3 style="margin:0 0 8px 0">Order summary</h3>
+              <div id="cart-summary" style="margin-bottom:12px"></div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-secondary" id="cart-continue">Continue shopping</button>
+                <button class="btn-order" id="cart-place-order">Place Order</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(cartModal);
+    cartModal.querySelector(".modal-close").addEventListener("click", () => closeModal(cartModal));
+    cartModal.querySelector("#cart-continue").addEventListener("click", () => closeModal(cartModal));
+    cartModal.querySelector("#cart-place-order").addEventListener("click", () => {
+      const msg = buildWhatsAppMessageForCart();
+      openWhatsApp(msg);
+      closeModal(cartModal);
+    });
+  }
+  renderCartItems();
+  openModal(cartModal);
+}
+function renderCartItems() {
+  if (!cartModal) return;
+  const container = cartModal.querySelector("#cart-items-container");
+  const summary = cartModal.querySelector("#cart-summary");
+  container.innerHTML = "";
+  if (!state.cart.items.length) {
+    container.innerHTML = `<div style="padding:18px">Your cart is empty.</div>`;
+    summary.innerHTML = `<div>No items.</div>`;
     return;
   }
-  state.cart.forEach((it, idx) => {
-    const part = storeData.find(p => p.id === it.partId);
-    const row = doc.createElement("div");
+  state.cart.items.forEach((it, idx) => {
+    const row = document.createElement("div");
     row.className = "cart-item";
     row.style.display = "flex";
     row.style.alignItems = "center";
-    row.style.gap = "12px";
+    row.style.gap = "8px";
+    row.style.background = "#fff";
+    row.style.padding = "8px";
+    row.style.borderRadius = "8px";
+    row.style.marginBottom = "8px";
     row.innerHTML = `
-      <img src="${part.image}" alt="${escapeHtml(part.name)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px">
+      <img src="${escapeHtml(it.image)}" style="width:64px;height:44px;object-fit:cover;border-radius:6px"/>
       <div style="flex:1">
-        <div style="font-weight:700">${escapeHtml(part.name)}</div>
-        <div style="color:var(--muted);font-size:0.95rem">${escapeHtml(it.variant.brand || "")} ${escapeHtml(it.variant.model || "")} ${it.variant.year ? "— " + escapeHtml(String(it.variant.year)) : ""}</div>
+        <div style="font-weight:700">${escapeHtml(it.name)}</div>
+        <div style="color:var(--muted);font-size:0.95rem">${escapeHtml(it.brand)} ${escapeHtml(it.model)} — ${escapeHtml(it.year)}</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <div>₦${formatNumber(Number(it.variant.price || 0) * it.qty)}</div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="qty-btn" data-idx="${idx}" data-delta="-1">−</button>
+      <div style="text-align:right">
+        <div style="font-weight:800">${formatCurrency(it.price)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:flex-end">
+          <button class="qty-decrease" data-idx="${idx}">−</button>
           <div style="min-width:28px;text-align:center">${it.qty}</div>
-          <button class="qty-btn" data-idx="${idx}" data-delta="1">+</button>
+          <button class="qty-increase" data-idx="${idx}">+</button>
         </div>
-        <button class="remove-btn" data-idx="${idx}" style="background:transparent;border:0;color:#c33;cursor:pointer">Remove</button>
       </div>
     `;
-    body.appendChild(row);
+    container.appendChild(row);
   });
-
-  // attach qty & remove handlers
-  body.querySelectorAll(".qty-btn").forEach((b) => {
-    b.addEventListener("click", (e) => {
-      const idx = Number(b.dataset.idx);
-      const delta = Number(b.dataset.delta);
-      changeCartQty(idx, delta);
-    });
-  });
-  body.querySelectorAll(".remove-btn").forEach((b) => {
-    b.addEventListener("click", (e) => {
-      const idx = Number(b.dataset.idx);
-      removeCartItem(idx);
-    });
-  });
-
-  // summary
-  const total = state.cart.reduce((s, it) => s + Number(it.variant.price || 0) * it.qty, 0);
-  const items = state.cart.reduce((s, it) => s + it.qty, 0);
-  footerSummary.innerHTML = `<div style="font-weight:800">Items: ${items}</div><div style="font-weight:800">Total: ₦${formatNumber(total)}</div>`;
+  container.querySelectorAll(".qty-decrease").forEach(b => b.addEventListener("click", () => {
+    const i = Number(b.dataset.idx);
+    if (state.cart.items[i]) {
+      if (state.cart.items[i].qty > 1) state.cart.items[i].qty--;
+      else state.cart.items.splice(i,1);
+      persistCart(); renderCartItems(); updateCartUI();
+    }
+  }));
+  container.querySelectorAll(".qty-increase").forEach(b => b.addEventListener("click", () => {
+    const i = Number(b.dataset.idx);
+    state.cart.items[i].qty++; persistCart(); renderCartItems(); updateCartUI();
+  }));
+  const total = state.cart.items.reduce((s,it) => s + it.qty * it.price, 0);
+  const count = state.cart.items.reduce((s,it) => s + it.qty, 0);
+  summary.innerHTML = `
+    <div style="display:flex;justify-content:space-between"><span>Items</span><strong>${count}</strong></div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
+  `;
 }
 
-/* Place order from cart: build message and open WhatsApp */
-function placeOrderFromCart() {
-  if (state.cart.length === 0) return;
-  let message = `Hello, I'd like to place an order:\n\n`;
-  state.cart.forEach((it, idx) => {
-    const part = storeData.find(p => p.id === it.partId);
-    message += `• ${part.name} — ${it.variant.brand || ""} ${it.variant.model || ""} ${it.variant.year ? "(" + it.variant.year + ")" : ""} × ${it.qty} — ₦${formatNumber(it.variant.price || 0)} each\n`;
-  });
-  const total = state.cart.reduce((s, it) => s + Number(it.variant.price || 0) * it.qty, 0);
-  message += `\nTotal: ₦${formatNumber(total)}\n\nPlease confirm availability and delivery.`;
-  openWhatsAppMessage(message);
+/* WhatsApp message builders */
+function buildWhatsAppMessageForQuickOrder(part, variant, qty=1) {
+  return [
+    `Hello, I want to place a quick order on Manny Autos.`,
+    `Part: ${part.name}`,
+    `Variant: ${variant.brand} ${variant.model} — ${variant.year}`,
+    `Qty: ${qty}`,
+    `Price: ${formatCurrency(variant.price)}`,
+    ``,
+    `Please confirm availability and delivery options.`
+  ].join("\n");
 }
-
-/* ============
-   Helpers: WhatsApp & small utilities
-   ============ */
-function openWhatsAppMessage(message) {
+function buildWhatsAppMessageForCart() {
+  const lines = ["Hello, I'm ordering the following parts from Manny Autos:"];
+  state.cart.items.forEach(it => {
+    lines.push(`• ${it.name} — ${it.brand} ${it.model} ${it.year} — ${it.qty} × ${formatCurrency(it.price)} = ${formatCurrency(it.qty * it.price)}`);
+  });
+  const total = state.cart.items.reduce((s,it) => s + it.qty * it.price, 0);
+  lines.push("", `Total: ${formatCurrency(total)}`, "", "Please confirm availability and delivery options.");
+  return lines.join("\n");
+}
+function openWhatsApp(message) {
   const encoded = encodeURIComponent(message);
-  const num = WHATSAPP_PHONE ? WHATSAPP_PHONE.replace(/\D/g, "") : "";
-  const url = num ? `https://wa.me/${num}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-  window.open(url, "_blank");
+  const wa = BUSSINESS_WHATSAPP ? `https://wa.me/${BUSSINESS_WHATSAPP.replace(/\D/g,"")}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+  window.open(wa, "_blank");
 }
 
-function showToast(msg, timeout = 2500) {
-  let t = doc.querySelector("#manny-toast");
+/* Toast */
+let toastTimer = null;
+function showToast(msg, ms=2200) {
+  let t = document.getElementById("manny-toast");
   if (!t) {
-    t = doc.createElement("div");
+    t = document.createElement("div");
     t.id = "manny-toast";
     t.style.position = "fixed";
-    t.style.top = "16px";
-    t.style.right = "16px";
-    t.style.background = "var(--navy)";
+    t.style.top = "18px";
+    t.style.left = "50%";
+    t.style.transform = "translateX(-50%)";
+    t.style.background = "rgba(11,58,111,0.95)";
     t.style.color = "#fff";
-    t.style.padding = "8px 12px";
+    t.style.padding = "8px 14px";
     t.style.borderRadius = "8px";
     t.style.zIndex = 4000;
-    doc.body.appendChild(t);
+    document.body.appendChild(t);
   }
   t.textContent = msg;
   t.style.opacity = "1";
-  setTimeout(() => {
-    t.style.transition = "opacity .6s ease";
-    t.style.opacity = "0";
-  }, timeout);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.style.opacity = "0", ms);
 }
 
-function formatNumber(n) {
-  return Number(n).toLocaleString();
-}
+/* =========================
+   Global handlers & init
+   ========================= */
+function attachGlobalHandlers() {
+  // enable strip-viewall buttons
+  attachStripViewAllHandlers();
 
-/* ============
-   Event delegation & UI wiring
-   ============ */
+  // top filter button dropdown
+  mountFilterDropdown();
 
-// global click handler for card buttons (delegated)
-stripContainerRoot.addEventListener("click", (e) => {
-  const t = e.target;
-  // View Details button on a card
-  if (t.matches(".card-btn.view") || t.closest(".btn-secondary.quick-order")) {
-    const id = Number(t.dataset.id || t.closest("[data-id]")?.dataset?.id);
-    const part = storeData.find(p => p.id === id);
-    if (part) {
-      openDetailsModal(part);
-    }
-    return;
+  // populate top filter buttons initially
+  buildStripsMapping();
+  populateTopFilterButtons();
+  mountAppliedFiltersUI();
+
+  // search input
+  if (searchInput) searchInput.addEventListener("input", debounce(() => { renderAllStrips(); }, 250));
+
+  // hamburger toggle
+  if (hamburgerBtn && mobileSidebar) {
+    hamburgerBtn.addEventListener("click", () => {
+      mobileSidebar.classList.toggle("open");
+      mobileSidebar.setAttribute("aria-hidden", mobileSidebar.classList.contains("open") ? "false" : "true");
+    });
+    const mobileClose = mobileSidebar.querySelector(".mobile-close");
+    if (mobileClose) mobileClose.addEventListener("click", () => {
+      mobileSidebar.classList.remove("open"); mobileSidebar.setAttribute("aria-hidden","true");
+    });
   }
 
-  // Add to Cart on a card
-  if (t.matches(".card-btn.add")) {
-    const id = Number(t.dataset.id);
-    const part = storeData.find(p => p.id === id);
-    if (!part) return;
-    // determine whether brand/model selection is required
-    // if filters uniquely identify brand+model+year => skip
-    const pre = inferSelectionsFromFilters(part);
-    showVariantPicker(part, pre, "add-to-cart")
-      .then((variant) => {
-        addToCart(part.id, variant, 1);
-      })
-      .catch(() => {});
-    return;
-  }
+  // cart buttons
+  mobileCartBtns.forEach(b => b.addEventListener("click", () => {
+    openCartModal();
+    if (mobileSidebar) { mobileSidebar.classList.remove("open"); mobileSidebar.setAttribute("aria-hidden","true"); }
+  }));
 
-  // inside section modal: Add to cart / View details buttons
-  if (t.matches(".btn-order")) {
-    const id = Number(t.dataset.id);
-    const part = storeData.find(p => p.id === id);
-    if (!part) return;
-    const pre = inferSelectionsFromFilters(part);
-    showVariantPicker(part, pre, "add-to-cart")
-      .then((variant) => {
-        addToCart(part.id, variant, 1);
-      })
-      .catch(() => {});
-    return;
-  }
-
-  if (t.matches(".btn-secondary")) {
-    // in section modal, view details
-    const id = Number(t.dataset.id);
-    const part = storeData.find(p => p.id === id);
-    if (part) openDetailsModal(part);
-    return;
-  }
-});
-
-// modal-level delegation (close buttons, details modal actions)
-doc.addEventListener("click", (e) => {
-  const t = e.target;
-  // close section modal/backdrop
-  if (t.matches(".modal-close") || t.matches(".modal-backdrop")) {
-    // close whichever modal is visible
-    if (sectionModal && sectionModal.classList.contains("show")) closeSectionModal();
-    if (detailsModal && detailsModal.classList.contains("show")) closeDetailsModal();
-    if (cartModal && cartModal.classList.contains("show")) closeCartModal();
-  }
-
-  // details modal Add To Cart / Quick Order (these buttons are inside details modal when shown)
-  if (t.matches(".btn-order") && detailsModal && detailsModal.classList.contains("show")) {
-    // data-id may be on button
-    const id = Number(t.dataset.id);
-    const part = storeData.find(p => p.id === id);
-    if (!part) return;
-    // infer selection
-    const pre = inferSelectionsFromFilters(part);
-    showVariantPicker(part, pre, "add-to-cart")
-      .then((variant) => {
-        addToCart(part.id, variant, 1);
-      })
-      .catch(() => {});
-    return;
-  }
-  if (t.matches(".quick-order")) {
-    const id = Number(t.dataset.id);
-    const part = storeData.find(p => p.id === id);
-    if (!part) return;
-    const pre = inferSelectionsFromFilters(part);
-    showVariantPicker(part, pre, "quick-order")
-      .then((variant) => {
-        // build quick whatsapp message for single item
-        const message = `Hello, I'd like a quick order:\n• ${part.name} — ${variant.brand || ""} ${variant.model || ""} ${variant.year ? "(" + variant.year + ")" : ""}\nPrice: ₦${formatNumber(variant.price || 0)}\nPlease confirm availability and delivery.`;
-        openWhatsAppMessage(message);
-      })
-      .catch(() => {});
-  }
-});
-
-// hamburger mobile sidebar toggles
-hamburger?.addEventListener("click", () => {
-  if (!mobileSidebar) return;
-  mobileSidebar.classList.toggle("open");
-  mobileSidebar.setAttribute("aria-hidden", String(!mobileSidebar.classList.contains("open")));
-});
-
-// mobile close
-mobileClose?.addEventListener("click", () => {
-  if (!mobileSidebar) return;
-  mobileSidebar.classList.remove("open");
-  mobileSidebar.setAttribute("aria-hidden", "true");
-});
-
-// mobile & nav cart buttons
-mobileCartBtns.forEach((b) => b.addEventListener("click", () => {
-  openCartModal();
-}));
-
-// filter button
-filterBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  showFilterModeDropdown();
-});
-
-// search input: simple text filtering on name/slug
-(searchInput ? [searchInput] : []).forEach((si) => {
-  si.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      performSearch(si.value || "");
-    }
-  });
-  let dbt = null;
-  si.addEventListener("input", () => {
-    if (dbt) clearTimeout(dbt);
-    dbt = setTimeout(() => performSearch(si.value || ""), 400);
-  });
-});
-
-function performSearch(q) {
-  const term = String(q || "").trim().toLowerCase();
-  if (!term) {
-    // clear search -> show home view
-    state.view = "home";
-    renderStrips();
-    return;
-  }
-  // filter storeData by name/slug/keywords
-  const results = storeData.filter((p) => {
-    const hay = `${p.name} ${p.slug} ${p.description} ${(p.tags||[]).join(" ")}`.toLowerCase();
-    return hay.includes(term);
-  });
-  // show a single 'Search results' strip
-  clearStoreContent();
-  const section = makeStrip({ id: "search-results", title: `Search results (${results.length})`, parts: results });
-  stripContainerRoot.appendChild(section);
-}
-
-/* ============
-   helpers: infer selections from current filters
-   If filters already contain brand+model+year unique, return them to skip asking.
-   ============ */
-function inferSelectionsFromFilters(part) {
-  const pre = { brand: null, model: null, year: null };
-  // if a single brand filter selected and that brand appears in part.compatibilities, preselect it
-  if (state.filters.brand.size === 1) {
-    const b = Array.from(state.filters.brand)[0];
-    if ((part.compatibilities || []).some(c => c.brand === b)) pre.brand = b;
-  }
-  // model
-  if (state.filters.model.size === 1) {
-    const m = Array.from(state.filters.model)[0];
-    if ((part.compatibilities || []).some(c => c.model === m)) pre.model = m;
-  }
-  // if both brand & model are set AND there's only one matching year across variants, set year
-  if (pre.brand && pre.model) {
-    const years = uniq((part.variants || []).filter(v => v.brand === pre.brand && v.model === pre.model).map(v => v.year));
-    if (years.length === 1) pre.year = years[0];
-  }
-  return pre;
-}
-
-/* ============
-   Small helpers
-   ============ */
-function escapeHtml(str = "") {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
-/* ============
-   Initialization
-   ============ */
-function init() {
- console.log("Heh")
-  // render initial filter chips / dropdown
-  ensureFilterModeDropdown();
-  populateFilterChips();
-  ensureFiltersArea();
-  renderFilterChips();
-
-  // initial strips
-  renderStrips();
-
-  // restore cart UI
-  updateCartCount();
-
-  // wire up modal close by clicking backdrop (delegated)
-  doc.addEventListener("click", (e) => {
-    if (e.target.matches(".modal")) {
-      // close whichever modal is open
-      if (e.target === sectionModal) closeSectionModal();
-      if (e.target === detailsModal) closeDetailsModal();
-      if (e.target === cartModal) closeCartModal();
+  // details modal close (delegated)
+  document.addEventListener("click", (e) => {
+    if (e.target.matches(".modal-close")) {
+      const modal = e.target.closest(".modal");
+      if (modal) closeModal(modal);
     }
   });
 
-  // global keyboard handler for Escape to close modals
-  doc.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeSectionModal();
-      closeDetailsModal();
-      closeCartModal();
-    }
-  });
-
-  // wire up section modal close buttons (if created by markup)
-  sectionModal?.querySelectorAll(".modal-close")?.forEach((b) => b.addEventListener("click", closeSectionModal));
-
-  // attach click handlers inside details modal (delegated above)
-
-  // populate the .categories initially
-  populateFilterChips();
-
-  // show top-of-page instruction (optional)
-  // showToast("Store ready");
+  // keyboard escape to close modals
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { document.querySelectorAll(".modal.show").forEach(m => closeModal(m)); }});
 }
 
-init();
+/* small helpers */
+function openModal(el){ if(!el) return; el.classList.add("show"); document.body.classList.add("modal-open"); }
+function closeModal(el){ if(!el) return; el.classList.remove("show"); if (!document.querySelector(".modal.show")) document.body.classList.remove("modal-open"); }
+function debounce(fn, ms=200){ let t=null; return (...a)=>{ if(t) clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+/* =========================
+   Init on DOMContentLoaded
+   ========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    // Build strips and render UI
+    buildStripsMapping();
+    ensureSectionsExist();
+    populateTopFilterButtons();
+    mountFilterDropdown();
+    attachGlobalHandlers();
+    renderAllStrips();
+    updateCartUI();
+  } catch (err) {
+    console.error("Init error", err);
+  }
+});
+
+/* expose for debugging */
+window.mannyStore = {
+  state,
+  renderAllStrips,
+  openCartModal,
+  addToCart,
+  storeData
+};

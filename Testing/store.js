@@ -16,119 +16,120 @@ const STORE_SESSION_CART_KEY = "manny_store_cart_v1";
 // ---------- Sample dataset (variants) ----------
 // Keep this small for demo; expand for real usage.
 
-/*
-const storeData = [
-  {
-    id: 1,
-    name: "Brake Pad Set",
-    slug: "brake-pad-set",
-    description: "Ceramic brake pad set — quieter and longer life.",
-    image: "../images/brake pads.jpg",
-    category: "Brakes",
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
-      { brand: "Honda", model: "Civic", years: [2014,2015,2016] },
-      { brand: "Honda", model: "Accord", years: [2012,2013,2014] }
-    ],
-    // variants: each entry is a specific brand+model+year price & availability
-    variants: [
-      { brand: "Toyota", model: "Corolla", year: 2010, price: 9500, availability: "In stock" },
-      { brand: "Toyota", model: "Corolla", year: 2011, price: 10000, availability: "In stock" },
-      { brand: "Honda", model: "Civic", year: 2014, price: 12000, availability: "Low stock" },
-      { brand: "Honda", model: "Civic", year: 2015, price: 11500, availability: "Low stock" },
-      { brand: "Honda", model: "Accord", year: 2012, price: 12500, availability: "In stock" }
-    ]
-  },
 
-  {
-    id: 2,
-    name: "Oil Filter",
-    slug: "oil-filter",
-    description: "High-flow oil filter. Protects engine from contaminants.",
-    image: "../images/linkage.jpg",
-    category: "Filters",
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: [2010,2011,2012,2013] },
-      { brand: "Nissan", model: "Sentra", years: [2015,2016] }
-    ],
-    variants: [
-      { brand: "Toyota", model: "Corolla", year: 2012, price: 1800, availability: "In stock" },
-      { brand: "Toyota", model: "Corolla", year: 2013, price: 1800, availability: "In stock" },
-      { brand: "Nissan", model: "Sentra", year: 2015, price: 2000, availability: "In stock" }
-    ]
-  },
+import { storeData2 as storeData } from "./data.js";
 
-  {
-    id: 3,
-    name: "Headlight Bulb (H4)",
-    slug: "headlight-h4",
-    description: "Bright halogen H4 bulb. Long life and good penetration.",
-    image: "https://via.placeholder.com/400x300?text=Headlight+H4",
-    category: "Lighting",
-    compatibilities: [
-      { brand: "Toyota", model: "Avanza", years: [2010,2011] },
-      { brand: "Honda", model: "Civic", years: [2014,2015] }
-    ],
-    variants: [
-      { brand: "Toyota", model: "Avanza", year: 2010, price: 1200, availability: "Low stock" },
-      { brand: "Honda", model: "Civic", year: 2014, price: 1400, availability: "In stock" }
-    ]
-  },
 
-  {
-    id: 4,
-    name: "Air Filter",
-    slug: "air-filter",
-    description: "Premium air filter for better airflow and engine life.",
-    image: "../images/shaft heads.jpg",
-    category: "Filters",
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
-      { brand: "Honda", model: "Civic", years: [2015,2016] }
-    ],
-    variants: [
-      { brand: "Toyota", model: "Corolla", year: 2012, price: 2200, availability: "In stock" },
-      { brand: "Honda", model: "Civic", year: 2015, price: 2500, availability: "In stock" }
-    ]
-  },
+// const storeData = [
+//   {
+//     id: 1,
+//     name: "Brake Pad Set",
+//     slug: "brake-pad-set",
+//     description: "Ceramic brake pad set — quieter and longer life.",
+//     image: "../images/brake pads.jpg",
+//     category: "Brakes",
+//     compatibilities: [
+//       { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
+//       { brand: "Honda", model: "Civic", years: [2014,2015,2016] },
+//       { brand: "Honda", model: "Accord", years: [2012,2013,2014] }
+//     ],
+//     // variants: each entry is a specific brand+model+year price & availability
+//     variants: [
+//       { brand: "Toyota", model: "Corolla", year: 2010, price: 9500, availability: "In stock" },
+//       { brand: "Toyota", model: "Corolla", year: 2011, price: 10000, availability: "In stock" },
+//       { brand: "Honda", model: "Civic", year: 2014, price: 12000, availability: "Low stock" },
+//       { brand: "Honda", model: "Civic", year: 2015, price: 11500, availability: "Low stock" },
+//       { brand: "Honda", model: "Accord", year: 2012, price: 12500, availability: "In stock" }
+//     ]
+//   },
 
-  {
-    id: 5,
-    name: "Radiator Hose",
-    slug: "radiator-hose",
-    description: "Reinforced rubber radiator hose — heat and pressure resistant.",
-    image: "https://via.placeholder.com/400x300?text=Radiator+Hose",
-    category: "Engine Parts",
-    compatibilities: [
-      { brand: "Nissan", model: "Altima", years: [2014,2015] },
-      { brand: "Toyota", model: "Camry", years: [2013,2014] }
-    ],
-    variants: [
-      { brand: "Nissan", model: "Altima", year: 2014, price: 3400, availability: "In stock" },
-      { brand: "Toyota", model: "Camry", year: 2013, price: 3600, availability: "Low stock" }
-    ]
-  },
+//   {
+//     id: 2,
+//     name: "Oil Filter",
+//     slug: "oil-filter",
+//     description: "High-flow oil filter. Protects engine from contaminants.",
+//     image: "../images/linkage.jpg",
+//     category: "Filters",
+//     compatibilities: [
+//       { brand: "Toyota", model: "Corolla", years: [2010,2011,2012,2013] },
+//       { brand: "Nissan", model: "Sentra", years: [2015,2016] }
+//     ],
+//     variants: [
+//       { brand: "Toyota", model: "Corolla", year: 2012, price: 1800, availability: "In stock" },
+//       { brand: "Toyota", model: "Corolla", year: 2013, price: 1800, availability: "In stock" },
+//       { brand: "Nissan", model: "Sentra", year: 2015, price: 2000, availability: "In stock" }
+//     ]
+//   },
 
-  {
-    id: 6,
-    name: "Timing Belt",
-    slug: "timing-belt",
-    description: "High-durability timing belt.",
-    image: "https://via.placeholder.com/400x300?text=Timing+Belt",
-    category: "Engine Parts",
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: [2010,2011] },
-      { brand: "Honda", model: "Accord", years: [2012] }
-    ],
-    variants: [
-      { brand: "Toyota", model: "Corolla", year: 2010, price: 6200, availability: "Low stock" },
-      { brand: "Honda", model: "Accord", year: 2012, price: 6500, availability: "In stock" }
-    ]
-  }
-];
-*/
+//   {
+//     id: 3,
+//     name: "Headlight Bulb (H4)",
+//     slug: "headlight-h4",
+//     description: "Bright halogen H4 bulb. Long life and good penetration.",
+//     image: "https://via.placeholder.com/400x300?text=Headlight+H4",
+//     category: "Lighting",
+//     compatibilities: [
+//       { brand: "Toyota", model: "Avanza", years: [2010,2011] },
+//       { brand: "Honda", model: "Civic", years: [2014,2015] }
+//     ],
+//     variants: [
+//       { brand: "Toyota", model: "Avanza", year: 2010, price: 1200, availability: "Low stock" },
+//       { brand: "Honda", model: "Civic", year: 2014, price: 1400, availability: "In stock" }
+//     ]
+//   },
 
-import {storeData} from "./data.js"
+//   {
+//     id: 4,
+//     name: "Air Filter",
+//     slug: "air-filter",
+//     description: "Premium air filter for better airflow and engine life.",
+//     image: "../images/shaft heads.jpg",
+//     category: "Filters",
+//     compatibilities: [
+//       { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
+//       { brand: "Honda", model: "Civic", years: [2015,2016] }
+//     ],
+//     variants: [
+//       { brand: "Toyota", model: "Corolla", year: 2012, price: 2200, availability: "In stock" },
+//       { brand: "Honda", model: "Civic", year: 2015, price: 2500, availability: "In stock" }
+//     ]
+//   },
+
+//   {
+//     id: 5,
+//     name: "Radiator Hose",
+//     slug: "radiator-hose",
+//     description: "Reinforced rubber radiator hose — heat and pressure resistant.",
+//     image: "https://via.placeholder.com/400x300?text=Radiator+Hose",
+//     category: "Engine Parts",
+//     compatibilities: [
+//       { brand: "Nissan", model: "Altima", years: [2014,2015] },
+//       { brand: "Toyota", model: "Camry", years: [2013,2014] }
+//     ],
+//     variants: [
+//       { brand: "Nissan", model: "Altima", year: 2014, price: 3400, availability: "In stock" },
+//       { brand: "Toyota", model: "Camry", year: 2013, price: 3600, availability: "Low stock" }
+//     ]
+//   },
+
+//   {
+//     id: 6,
+//     name: "Timing Belt",
+//     slug: "timing-belt",
+//     description: "High-durability timing belt.",
+//     image: "https://via.placeholder.com/400x300?text=Timing+Belt",
+//     category: "Engine Parts",
+//     compatibilities: [
+//       { brand: "Toyota", model: "Corolla", years: [2010,2011] },
+//       { brand: "Honda", model: "Accord", years: [2012] }
+//     ],
+//     variants: [
+//       { brand: "Toyota", model: "Corolla", year: 2010, price: 6200, availability: "Low stock" },
+//       { brand: "Honda", model: "Accord", year: 2012, price: 6500, availability: "In stock" }
+//     ]
+//   }
+// ];
+
 
 // ---------- App State ----------
 const state = {
