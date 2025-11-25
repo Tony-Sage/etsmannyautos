@@ -380,5 +380,334 @@ export const storeData = [
       { brand: "Toyota", model: "Camry", year: 2013, price: 350, availability: "In stock" }, // per meter
       { brand: "Honda", model: "Accord", year: 2012, price: 360, availability: "In stock" }  // per meter
     ]
+  },
+  
+  {
+    id: 21,
+    name: "Steering Rack",
+    slug: "steering-rack",
+    description: "Precision steering rack assembly for smooth steering response and long service life.",
+    image: "../images/steering rack.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["steering rack", "rack assembly", "power steering", "camry steering"],
+    compatibilities: [
+      { brand: "Toyota", model: "Camry", years: [2007,2008,2009,2010,2011] },
+      { brand: "Honda", model: "Accord", years: [2008,2009,2010,2011,2012] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Camry", year: 2007, price: 52000, availability: "Low Stock" },
+      { brand: "Honda", model: "Accord", year: 2008, price: 52000, availability: "Low Stock" }
+    ]
+  },
+
+  {
+    id: 22,
+    name: "Shaft Head (Drive Shaft End)",
+    slug: "shaft-head-drive-shaft-end",
+    description: "High-strength drive shaft head for secure coupling and reduced vibration.",
+    image: "../images/shaft heads.jpg",
+    category: "Engine Accessories",
+    tracks: ["others", "Engine Accessories"],
+    tags: ["shaft head", "drive shaft end", "cv joint", "prop shaft head"],
+    compatibilities: [
+      { brand: "Nissan", model: "X-Trail", years: [2010,2011,2012,2013,2014,2015] },
+      { brand: "Mitsubishi", model: "Pajero", years: [2006,2007,2008,2009,2010,2011] }
+    ],
+    variants: [
+      { brand: "Nissan", model: "X-Trail", year: 2010, price: 14500, availability: "In Stock" },
+      { brand: "Mitsubishi", model: "Pajero", year: 2006, price: 14500, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 23,
+    name: "Basket Bearing (Wheel Bearing)",
+    slug: "basket-bearing-wheel-bearing",
+    description: "Durable wheel bearing (basket style) to ensure smooth wheel rotation and longevity.",
+    image: "../images/basket bearing.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["bearing", "wheel bearing", "basket bearing", "corolla bearing"],
+    compatibilities: [
+      { brand: "Toyota", model: "Corolla", years: [2003,2004,2005,2006,2007,2008] },
+      { brand: "Toyota", model: "Yaris", years: [2006,2007,2008,2009,2010,2011] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Corolla", year: 2003, price: 7200, availability: "In Stock" },
+      { brand: "Toyota", model: "Yaris", year: 2006, price: 7200, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 24,
+    name: "Hub Assembly",
+    slug: "hub-assembly",
+    description: "Complete hub assembly with flange for secure wheel mounting and reliable operation.",
+    image: "../images/hubs.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["hub", "hub assembly", "wheel hub", "hub bearing"],
+    compatibilities: [
+      { brand: "Honda", model: "Fit", years: [2007,2008,2009,2010,2011,2012,2013] },
+      { brand: "Nissan", model: "Note", years: [2006,2007,2008,2009,2010,2011,2012] }
+    ],
+    variants: [
+      { brand: "Honda", model: "Fit", year: 2007, price: 12800, availability: "In Stock" },
+      { brand: "Nissan", model: "Note", year: 2006, price: 12800, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 25,
+    name: "Brake Pads (Front Set)",
+    slug: "brake-pads-front-set",
+    description: "Ceramic front brake pad set delivering quiet operation and long life.",
+    image: "../images/brake pads.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["brake pads", "front pads", "ceramic pads", "brakes"],
+    compatibilities: [
+      { brand: "Toyota", model: "Corolla", years: [2008,2009,2010,2011,2012,2013] },
+      { brand: "Honda", model: "Civic", years: [2006,2007,2008,2009,2010,2011] },
+      { brand: "Nissan", model: "Almera", years: [2007,2008,2009,2010,2011,2012] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Corolla", year: 2008, price: 9800, availability: "In Stock" },
+      { brand: "Honda", model: "Civic", year: 2006, price: 9800, availability: "In Stock" },
+      { brand: "Nissan", model: "Almera", year: 2007, price: 9800, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 26,
+    name: "Shock Absorber (Rear)",
+    slug: "shock-absorber-rear",
+    description: "Rear shock absorber tuned for comfort and control on mixed road conditions.",
+    image: "../images/shock.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["shock absorber", "rear shock", "suspension", "rx350 shock"],
+    compatibilities: [
+      { brand: "Lexus", model: "RX350", years: [2010,2011,2012,2013,2014,2015] },
+      { brand: "Toyota", model: "Highlander", years: [2008,2009,2010,2011,2012] }
+    ],
+    variants: [
+      { brand: "Lexus", model: "RX350", year: 2010, price: 16500, availability: "In Stock" },
+      { brand: "Toyota", model: "Highlander", year: 2008, price: 16500, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 27,
+    name: "Ball Joint",
+    slug: "ball-joint",
+    description: "Forged ball joint for reliable steering geometry and long-lasting durability.",
+    image: "../images/ball joint.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["ball joint", "suspension joint", "steering joint"],
+    compatibilities: [
+      { brand: "Toyota", model: "Hilux", years: [2005,2006,2007,2008,2009,2010,2011] },
+      { brand: "Nissan", model: "Navara", years: [2006,2007,2008,2009,2010,2011,2012] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Hilux", year: 2005, price: 7600, availability: "Low Stock" },
+      { brand: "Nissan", model: "Navara", year: 2006, price: 7600, availability: "Low Stock" }
+    ]
+  },
+
+  {
+    id: 28,
+    name: "Center Bearing",
+    slug: "center-bearing",
+    description: "Center support bearing for multi-piece drive shafts to reduce vibration and wear.",
+    image: "../images/center bearing.jpg",
+    category: "Engine Accessories",
+    tracks: ["others", "Engine Accessories"],
+    tags: ["center bearing", "prop shaft bearing", "drive shaft bearing"],
+    compatibilities: [
+      { brand: "Mitsubishi", model: "L200", years: [2006,2007,2008,2009,2010,2011,2012] },
+      { brand: "Isuzu", model: "D-Max", years: [2008,2009,2010,2011,2012,2013,2014] }
+    ],
+    variants: [
+      { brand: "Mitsubishi", model: "L200", year: 2006, price: 6800, availability: "In Stock" },
+      { brand: "Isuzu", model: "D-Max", year: 2008, price: 6800, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 29,
+    name: "Universal Joint (U-Joint)",
+    slug: "universal-joint-u-joint",
+    description: "Robust universal joint for reliable torque transfer in drive shafts under load.",
+    image: "../images/universal joint.jpg",
+    category: "Engine Accessories",
+    tracks: ["others", "Engine Accessories"],
+    tags: ["universal joint", "u-joint", "prop shaft u-joint"],
+    compatibilities: [
+      { brand: "Nissan", model: "Navara", years: [2006,2007,2008,2009,2010,2011,2012,2013,2014] },
+      { brand: "Toyota", model: "Hilux", years: [2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015] }
+    ],
+    variants: [
+      { brand: "Nissan", model: "Navara", year: 2006, price: 5400, availability: "In Stock" },
+      { brand: "Toyota", model: "Hilux", year: 2005, price: 5400, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 30,
+    name: "Shaft Joint (CV Joint)",
+    slug: "shaft-joint-cv-joint",
+    description: "Constant velocity shaft joint to maintain smooth power transfer at varying angles.",
+    image: "../images/shaft joint.jpg",
+    category: "Engine Accessories",
+    tracks: ["others", "Engine Accessories"],
+    tags: ["cv joint", "shaft joint", "constant velocity joint"],
+    compatibilities: [
+      { brand: "Toyota", model: "Corolla", years: [2008,2009,2010,2011,2012,2013] },
+      { brand: "Honda", model: "Civic", years: [2006,2007,2008,2009,2010,2011] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Corolla", year: 2008, price: 11200, availability: "Low Stock" },
+      { brand: "Honda", model: "Civic", year: 2006, price: 11200, availability: "Low Stock" }
+    ]
+  },
+
+  {
+    id: 31,
+    name: "Shaft Hose (Drive Shaft Dust Boot)",
+    slug: "shaft-hose-drive-shaft-dust-boot",
+    description: "Protective dust boot for CV/drive shaft joints — prevents contamination and premature wear.",
+    image: "../images/shaft hose.jpg",
+    category: "Engine Accessories",
+    tracks: ["others", "Engine Accessories"],
+    tags: ["shaft boot", "dust boot", "cv boot", "drive shaft hose"],
+    compatibilities: [
+      { brand: "Honda", model: "CR-V", years: [2007,2008,2009,2010,2011,2012] },
+      { brand: "Nissan", model: "X-Trail", years: [2010,2011,2012,2013,2014,2015,2016] }
+    ],
+    variants: [
+      { brand: "Honda", model: "CR-V", year: 2007, price: 2400, availability: "In Stock" },
+      { brand: "Nissan", model: "X-Trail", year: 2010, price: 2400, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 32,
+    name: "Arm Bushing",
+    slug: "arm-bushing",
+    description: "Polyurethane control arm bushing for improved handling and reduced play.",
+    image: "../images/arm bushing.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["arm bush", "bushing", "control arm bushing", "polyurethane bushing"],
+    compatibilities: [
+      { brand: "Toyota", model: "Corolla", years: [2003,2004,2005,2006,2007,2008] },
+      { brand: "Toyota", model: "Matrix", years: [2003,2004,2005,2006,2007,2008] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Corolla", year: 2003, price: 4200, availability: "In Stock" },
+      { brand: "Toyota", model: "Matrix", year: 2003, price: 4200, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 33,
+    name: "Control Arm",
+    slug: "control-arm",
+    description: "Stamped steel control arm for dependable suspension geometry and strength.",
+    image: "../images/control arm.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["control arm", "suspension arm", "lower arm"],
+    compatibilities: [
+      { brand: "Honda", model: "Accord", years: [2008,2009,2010,2011,2012] },
+      { brand: "Toyota", model: "Camry", years: [2007,2008,2009,2010,2011] }
+    ],
+    variants: [
+      { brand: "Honda", model: "Accord", year: 2008, price: 15800, availability: "In Stock" },
+      { brand: "Toyota", model: "Camry", year: 2007, price: 15800, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 34,
+    name: "Stabilizer Rubber (Anti-roll Bush)",
+    slug: "stabilizer-rubber-anti-roll-bush",
+    description: "Rubber stabilizer bush to reduce sway and maintain handling stability.",
+    image: "../images/stabilizer rubber.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["stabilizer bush", "anti roll bush", "sway bar bush"],
+    compatibilities: [
+      { brand: "Toyota", model: "RAV4", years: [2006,2007,2008,2009,2010,2011,2012] },
+      { brand: "Nissan", model: "Qashqai", years: [2007,2008,2009,2010,2011,2012] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "RAV4", year: 2006, price: 1200, availability: "In Stock" },
+      { brand: "Nissan", model: "Qashqai", year: 2007, price: 1200, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 35,
+    name: "Linkage (Steering Linkage)",
+    slug: "linkage-steering-linkage",
+    description: "Steering linkage/component to maintain precise wheel alignment and steering feel.",
+    image: "../images/linkage.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["linkage", "steering linkage", "tie rod linkage"],
+    compatibilities: [
+      { brand: "Toyota", model: "Hilux", years: [2005,2006,2007,2008,2009,2010,2011,2012] },
+      { brand: "Isuzu", model: "D-Max", years: [2008,2009,2010,2011,2012,2013,2014] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Hilux", year: 2005, price: 7800, availability: "Low Stock" },
+      { brand: "Isuzu", model: "D-Max", year: 2008, price: 7800, availability: "Low Stock" }
+    ]
+  },
+
+  {
+    id: 36,
+    name: "Tie Rod End",
+    slug: "tie-rod-end",
+    description: "Adjustable tie rod end for secure steering linkage and precise toe settings.",
+    image: "../images/tie rod end.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["tie rod end", "tie rod", "steering end"],
+    compatibilities: [
+      { brand: "Nissan", model: "Almera", years: [2007,2008,2009,2010,2011,2012] },
+      { brand: "Toyota", model: "Yaris", years: [2006,2007,2008,2009,2010,2011] }
+    ],
+    variants: [
+      { brand: "Nissan", model: "Almera", year: 2007, price: 3400, availability: "In Stock" },
+      { brand: "Toyota", model: "Yaris", year: 2006, price: 3400, availability: "In Stock" }
+    ]
+  },
+
+  {
+    id: 37,
+    name: "Tie Rod Socket (Outer Socket)",
+    slug: "tie-rod-socket-outer-socket",
+    description: "Outer tie rod socket for secure connection between steering rack and wheel assembly.",
+    image: "../images/tie rod socket.jpg",
+    category: "Chassis Accessories",
+    tracks: ["others", "Chassis Accessories"],
+    tags: ["tie rod socket", "outer socket", "tie rod"],
+    compatibilities: [
+      { brand: "Toyota", model: "Corolla", years: [2008,2009,2010,2011,2012,2013] },
+      { brand: "Honda", model: "Civic", years: [2006,2007,2008,2009,2010,2011] }
+    ],
+    variants: [
+      { brand: "Toyota", model: "Corolla", year: 2008, price: 2200, availability: "In Stock" },
+      { brand: "Honda", model: "Civic", year: 2006, price: 2200, availability: "In Stock" }
+    ]
   }
 ];
+
+
+
+
