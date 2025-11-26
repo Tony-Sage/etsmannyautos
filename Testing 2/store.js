@@ -646,7 +646,7 @@ function enterExpandedSection(title) {
   // create expanded container
   expandedContainer = document.createElement("div");
   expandedContainer.id = "expanded-section";
-  expandedContainer.style.padding = "1rem";
+  expandedContainer.style.padding = "0.5rem";
   expandedContainer.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:12px">

@@ -8,7 +8,7 @@ export const storeData = [
     image: "../images/brake pads.jpg",
     category: " Engine Parts",
     tracks: ["featured", "chassis", "brakes"],
-    tags: ["ceramic", "quiet", "dust-free"],
+    tags: ["ceramic"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
       { brand: "Honda", model: "Civic", years: [2014,2015] }
@@ -29,7 +29,7 @@ export const storeData = [
     image: "../images/oil-filter.jpg",
     category: "Engine Accessories",
     tracks: ["featured", "engine", "filters"],
-    tags: ["filter", "maintenance", "engine-care"],
+    tags: ["maintenance", "engine-care"],
     compatibilities: [
       { brand: "Toyota", model: "Camry", years: [2012,2013,2014] },
       { brand: "Nissan", model: "Altima", years: [2014,2015] }
@@ -48,7 +48,7 @@ export const storeData = [
     image: "https://via.placeholder.com/400x300?text=Headlight+H4",
     category: "Electrical Accessories",
     tracks: ["lighting", "featured", "electrical"],
-    tags: ["lighting", "halogen", "bulb"],
+    tags: ["lighting"],
     compatibilities: [
       { brand: "Toyota", model: "Avanza", years: [2010,2011] },
       { brand: "Honda", model: "Civic", years: [2014,2015] }
@@ -67,7 +67,7 @@ export const storeData = [
     image: "../images/shaft heads.jpg",
     category: "Engine Accessories",
     tracks: ["new-arrivals", "filters", "engine"],
-    tags: ["filter", "air", "performance"],
+    tags: ["filter", "performance"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2011,2012,2013] },
       { brand: "Honda", model: "Accord", years: [2012,2013] }
@@ -86,7 +86,7 @@ export const storeData = [
     image: "https://via.placeholder.com/400x300?text=Radiator+Hose",
     category: "Engine Accessories",
     tracks: ["engine", "chassis"],
-    tags: ["hose", "cooling", "durable"],
+    tags: ["cooling"],
     compatibilities: [
       { brand: "Nissan", model: "Altima", years: [2014,2015] },
       { brand: "Toyota", model: "Camry", years: [2013,2014] }
@@ -105,7 +105,7 @@ export const storeData = [
     image: "https://via.placeholder.com/400x300?text=Timing+Belt",
     category: "Engine Accessories",
     tracks: ["engine", "featured"],
-    tags: ["belt", "timing", "maintenance"],
+    tags: ["maintenance"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2010,2011] },
       { brand: "Honda", model: "Accord", years: [2012,2013] }
@@ -124,7 +124,7 @@ export const storeData = [
     image: "../images/spark-plug.jpg",
     category: "Engine Accessories",
     tracks: ["new-arrivals", "engine"],
-    tags: ["spark", "ignition", "platinum"],
+    tags: ["ignition"],
     compatibilities: [
       { brand: "Honda", model: "Civic", years: [2014,2015] },
       { brand: "Toyota", model: "Yaris", years: [2016,2017] }
@@ -143,7 +143,7 @@ export const storeData = [
     image: "../images/headlamp.jpg",
     category: "Body Parts",
     tracks: ["featured", "lighting", "body"],
-    tags: ["assembly", "headlamp", "body"],
+    tags: ["body"],
     compatibilities: [
       { brand: "Nissan", model: "Sentra", years: [2015,2016] },
       { brand: "Toyota", model: "Corolla", years: [2017] }
@@ -162,7 +162,7 @@ export const storeData = [
     image: "../images/bumper.jpg",
     category: "Body Parts",
     tracks: ["body", "featured"],
-    tags: ["bumper", "body", "paintable"],
+    tags: ["body"],
     compatibilities: [
       { brand: "Toyota", model: "Camry", years: [2013,2014] },
       { brand: "Honda", model: "Accord", years: [2012,2013] }
@@ -181,7 +181,7 @@ export const storeData = [
     image: "https://via.placeholder.com/400x300?text=LED+Dome+Light",
     category: "Interior Decorations",
     tracks: ["lighting", "interior", "new-arrivals"],
-    tags: ["LED", "interior", "lighting"],
+    tags: ["interior", "lighting"],
     compatibilities: [
       { brand: "Toyota", model: "Yaris", years: [2016,2017] },
       { brand: "Honda", model: "Fit", years: [2015] }
@@ -200,7 +200,7 @@ export const storeData = [
     image: "../images/door-sill.jpg",
     category: "Interior Decorations",
     tracks: ["interior", "featured"],
-    tags: ["sill", "stainless", "trim"],
+    tags: ["body"],
     compatibilities: [
       { brand: "Nissan", model: "Altima", years: [2014,2015] },
       { brand: "Toyota", model: "Camry", years: [2013] }
@@ -219,7 +219,7 @@ export const storeData = [
     image: "../images/floor-mats.jpg",
     category: "Interior Decorations",
     tracks: ["interior", "others", "featured"],
-    tags: ["mat", "all-weather", "easy-clean"],
+    tags: ["interior"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
       { brand: "Honda", model: "Civic", years: [2014,2015] }
@@ -238,7 +238,7 @@ export const storeData = [
     image: "../images/side-mirror.jpg",
     category: "Body Parts",
     tracks: ["body", "electrical"],
-    tags: ["mirror", "electric", "heating"],
+    tags: ["electric"],
     compatibilities: [
       { brand: "Nissan", model: "Sentra", years: [2015,2016] },
       { brand: "Honda", model: "Accord", years: [2012,2013] }
@@ -257,7 +257,7 @@ export const storeData = [
     image: "../images/shock.jpg",
     category: "Chassis Accessories",
     tracks: ["chassis", "featured"],
-    tags: ["shock", "ride", "gas-filled"],
+    tags: ["shock"],
     compatibilities: [
       { brand: "Toyota", model: "Rav4", years: [2015,2016] },
       { brand: "Honda", model: "CR-V", years: [2014,2015] }
@@ -276,7 +276,7 @@ export const storeData = [
     image: "../images/brake-disc.jpg",
     category: "Chassis Accessories",
     tracks: ["chassis", "brakes"],
-    tags: ["disc", "ventilated", "brakes"],
+    tags: ["brakes"],
     compatibilities: [
       { brand: "Toyota", model: "Camry", years: [2013,2014] },
       { brand: "Nissan", model: "Altima", years: [2015] }
@@ -295,7 +295,7 @@ export const storeData = [
     image: "../images/alternator.jpg",
     category: "Electrical Accessories",
     tracks: ["electrical", "featured"],
-    tags: ["alternator", "charging", "electrical"],
+    tags: ["electrical"],
     compatibilities: [
       { brand: "Honda", model: "Civic", years: [2014,2015] },
       { brand: "Toyota", model: "Corolla", years: [2012,2013] }
@@ -314,7 +314,7 @@ export const storeData = [
     image: "../images/roof-rack.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "chassis"],
-    tags: ["rack", "cargo", "universal"],
+    tags: ["accessory"],
     compatibilities: [
       { brand: "Toyota", model: "Rav4", years: [2015,2016] },
       { brand: "Nissan", model: "X-Trail", years: [2014,2015] }
@@ -333,7 +333,7 @@ export const storeData = [
     image: "../images/seat-covers.jpg",
     category: "Interior Decorations",
     tracks: ["interior", "others"],
-    tags: ["seat", "waterproof", "comfort"],
+    tags: ["comfort", "interior"],
     compatibilities: [
       { brand: "Toyota", model: "Yaris", years: [2016,2017] },
       { brand: "Honda", model: "Fit", years: [2015] }
@@ -352,7 +352,7 @@ export const storeData = [
     image: "https://via.placeholder.com/400x300?text=USB+Charger",
     category: "Electrical Accessories",
     tracks: ["electrical", "others"],
-    tags: ["usb", "charger", "accessory"],
+    tags: ["accessory"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
       { brand: "Nissan", model: "Sentra", years: [2015,2016] }
@@ -371,7 +371,7 @@ export const storeData = [
     image: "../images/door-seal.jpg",
     category: "Body Parts",
     tracks: ["body", "others"],
-    tags: ["seal", "weatherproof", "rubber"],
+    tags: ["accessory"],
     compatibilities: [
       { brand: "Toyota", model: "Camry", years: [2013,2014] },
       { brand: "Honda", model: "Accord", years: [2012] }
@@ -390,7 +390,7 @@ export const storeData = [
     image: "../images/steering rack.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["steering rack", "rack assembly", "power steering", "camry steering"],
+    tags: [],
     compatibilities: [
       { brand: "Toyota", model: "Camry", years: [2007,2008,2009,2010,2011] },
       { brand: "Honda", model: "Accord", years: [2008,2009,2010,2011,2012] }
@@ -409,7 +409,7 @@ export const storeData = [
     image: "../images/shaft heads.jpg",
     category: "Engine Accessories",
     tracks: ["others", "Engine Accessories"],
-    tags: ["shaft head", "drive shaft end", "cv joint", "prop shaft head"],
+    tags: [],
     compatibilities: [
       { brand: "Nissan", model: "X-Trail", years: [2010,2011,2012,2013,2014,2015] },
       { brand: "Mitsubishi", model: "Pajero", years: [2006,2007,2008,2009,2010,2011] }
@@ -428,7 +428,7 @@ export const storeData = [
     image: "../images/basket bearing.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["bearing", "wheel bearing", "basket bearing", "corolla bearing"],
+    tags: ["bearing"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2003,2004,2005,2006,2007,2008] },
       { brand: "Toyota", model: "Yaris", years: [2006,2007,2008,2009,2010,2011] }
@@ -447,7 +447,7 @@ export const storeData = [
     image: "../images/hubs.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["hub", "hub assembly", "wheel hub", "hub bearing"],
+    tags: [],
     compatibilities: [
       { brand: "Honda", model: "Fit", years: [2007,2008,2009,2010,2011,2012,2013] },
       { brand: "Nissan", model: "Note", years: [2006,2007,2008,2009,2010,2011,2012] }
@@ -466,7 +466,7 @@ export const storeData = [
     image: "../images/brake pads.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["brake pads", "front pads", "ceramic pads", "brakes"],
+    tags: ["brakes"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2008,2009,2010,2011,2012,2013] },
       { brand: "Honda", model: "Civic", years: [2006,2007,2008,2009,2010,2011] },
@@ -487,7 +487,7 @@ export const storeData = [
     image: "../images/shock.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["shock absorber", "rear shock", "suspension", "rx350 shock"],
+    tags: ["performance"],
     compatibilities: [
       { brand: "Lexus", model: "RX350", years: [2010,2011,2012,2013,2014,2015] },
       { brand: "Toyota", model: "Highlander", years: [2008,2009,2010,2011,2012] }
@@ -506,7 +506,7 @@ export const storeData = [
     image: "../images/ball joint.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["ball joint", "suspension joint", "steering joint"],
+    tags: ["performance", "joint"],
     compatibilities: [
       { brand: "Toyota", model: "Hilux", years: [2005,2006,2007,2008,2009,2010,2011] },
       { brand: "Nissan", model: "Navara", years: [2006,2007,2008,2009,2010,2011,2012] }
@@ -525,7 +525,7 @@ export const storeData = [
     image: "../images/center bearing.jpg",
     category: "Engine Accessories",
     tracks: ["others", "Engine Accessories"],
-    tags: ["center bearing", "prop shaft bearing", "drive shaft bearing"],
+    tags: ["bearing"],
     compatibilities: [
       { brand: "Mitsubishi", model: "L200", years: [2006,2007,2008,2009,2010,2011,2012] },
       { brand: "Isuzu", model: "D-Max", years: [2008,2009,2010,2011,2012,2013,2014] }
@@ -544,7 +544,7 @@ export const storeData = [
     image: "../images/universal joint.jpg",
     category: "Engine Accessories",
     tracks: ["others", "Engine Accessories"],
-    tags: ["universal joint", "u-joint", "prop shaft u-joint"],
+    tags: ["performance", "joint"],
     compatibilities: [
       { brand: "Nissan", model: "Navara", years: [2006,2007,2008,2009,2010,2011,2012,2013,2014] },
       { brand: "Toyota", model: "Hilux", years: [2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015] }
@@ -563,7 +563,7 @@ export const storeData = [
     image: "../images/shaft joint.jpg",
     category: "Engine Accessories",
     tracks: ["others", "Engine Accessories"],
-    tags: ["cv joint", "shaft joint", "constant velocity joint"],
+    tags: ["performance", "joint"],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2008,2009,2010,2011,2012,2013] },
       { brand: "Honda", model: "Civic", years: [2006,2007,2008,2009,2010,2011] }
@@ -582,7 +582,7 @@ export const storeData = [
     image: "../images/shaft hose.jpg",
     category: "Engine Accessories",
     tracks: ["others", "Engine Accessories"],
-    tags: ["shaft boot", "dust boot", "cv boot", "drive shaft hose"],
+    tags: [],
     compatibilities: [
       { brand: "Honda", model: "CR-V", years: [2007,2008,2009,2010,2011,2012] },
       { brand: "Nissan", model: "X-Trail", years: [2010,2011,2012,2013,2014,2015,2016] }
@@ -601,7 +601,7 @@ export const storeData = [
     image: "../images/arm bushing.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["arm bush", "bushing", "control arm bushing", "polyurethane bushing"],
+    tags: [],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2003,2004,2005,2006,2007,2008] },
       { brand: "Toyota", model: "Matrix", years: [2003,2004,2005,2006,2007,2008] }
@@ -620,7 +620,7 @@ export const storeData = [
     image: "../images/control arm.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["control arm", "suspension arm", "lower arm"],
+    tags: [],
     compatibilities: [
       { brand: "Honda", model: "Accord", years: [2008,2009,2010,2011,2012] },
       { brand: "Toyota", model: "Camry", years: [2007,2008,2009,2010,2011] }
@@ -639,7 +639,7 @@ export const storeData = [
     image: "../images/stabilizer rubber.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["stabilizer bush", "anti roll bush", "sway bar bush"],
+    tags: ["performance", "comfort"],
     compatibilities: [
       { brand: "Toyota", model: "RAV4", years: [2006,2007,2008,2009,2010,2011,2012] },
       { brand: "Nissan", model: "Qashqai", years: [2007,2008,2009,2010,2011,2012] }
@@ -658,7 +658,7 @@ export const storeData = [
     image: "../images/linkage.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["linkage", "steering linkage", "tie rod linkage"],
+    tags: [],
     compatibilities: [
       { brand: "Toyota", model: "Hilux", years: [2005,2006,2007,2008,2009,2010,2011,2012] },
       { brand: "Isuzu", model: "D-Max", years: [2008,2009,2010,2011,2012,2013,2014] }
@@ -677,7 +677,7 @@ export const storeData = [
     image: "../images/tie rod end.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["tie rod end", "tie rod", "steering end"],
+    tags: [],
     compatibilities: [
       { brand: "Nissan", model: "Almera", years: [2007,2008,2009,2010,2011,2012] },
       { brand: "Toyota", model: "Yaris", years: [2006,2007,2008,2009,2010,2011] }
@@ -696,7 +696,7 @@ export const storeData = [
     image: "../images/tie rod socket.jpg",
     category: "Chassis Accessories",
     tracks: ["others", "Chassis Accessories"],
-    tags: ["tie rod socket", "outer socket", "tie rod"],
+    tags: [],
     compatibilities: [
       { brand: "Toyota", model: "Corolla", years: [2008,2009,2010,2011,2012,2013] },
       { brand: "Honda", model: "Civic", years: [2006,2007,2008,2009,2010,2011] }

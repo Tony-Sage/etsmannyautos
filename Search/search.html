@@ -53,7 +53,12 @@
   <!-- Optional mobile sidebar (JS will toggle .open) -->
   <aside id="mobileSidebar" class="mobile-sidebar" aria-hidden="true">
     <div class="mobile-sidebar-inner">
-      <button class="mobile-close" aria-label="Close menu">✕</button>
+      <button class="mobile-close" aria-label="Close menu">
+         <!-- inline SVG X -->
+        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2 L18 18 M18 2 L2 18" stroke="#0B3B6F" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
       <nav>
         <ul class="mobile-nav-links">
           <li><a href="../Home/index.html">Home</a></li>

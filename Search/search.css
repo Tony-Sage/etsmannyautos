@@ -194,6 +194,7 @@ body {
  display: flex;
  flex-direction: column;
  gap: 2rem;
+ list-style: none;
 }
 
 .mobile-nav-links a {
@@ -213,13 +214,13 @@ body {
 }
 
 .mobile-close {
- background: #2EC4D6;
- border-color: #ddd;
- border-style: solid;
- border-width: 2px;
- color: #fff;
- border-radius: 0.5rem;
- height: 2rem;
+  background: #2EC4D6;
+  border-color: #ddd;
+  border-style: solid;
+  border-width: 2px;
+  color: #fff;
+  border-radius: 0.5rem;
+  height: 2rem;
 }
 
 /* ---------- Page content ---------- */
