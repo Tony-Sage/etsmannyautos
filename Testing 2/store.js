@@ -45,15 +45,7 @@ const state = {
   ]
 };
 
-/* =========================
-   Cached DOM nodes
-   (re-uses existing HTML structure)
-   - We assume the page contains three anchor container elements:
-     1) a top area where the Featured strip is placed (we'll look for .store-strip where .strip-title = "Featured")
-     2) middle area - five category strips (strip-title text exactly as canonicalCategories)
-     3) bottom area - we'll dynamically generate strips for each tag and append to a container with id #others-section
-   If #others-section doesn't exist, we create it at the end of main content.
-   ========================= */
+
 const filterBtn = document.querySelector(".filter-btn");
 const categoriesRow = document.querySelector(".categories"); // reusable .category-filter buttons
 const searchInput = document.getElementById("search-input");
@@ -366,58 +358,70 @@ function populateTopFilterButtons() {
   const container = categoriesRow;
   if (!container) return;
   container.innerHTML = "";
-  // 'All' button always present to clear mode selections
+
+  // Determine if any filter is selected for the current mode:
+  let anySelected = false;
+  const mode = state.filters.mode;
+  if (mode === "category") anySelected = state.filters.selected.category.size > 0;
+  if (mode === "brand") anySelected = state.filters.selected.brand.size > 0;
+  if (mode === "model") anySelected = state.filters.selected.model.size > 0;
+  if (mode === "others") anySelected = state.filters.selected.tags.size > 0;
+
+  // 'All' button — active only when nothing is selected
   const allBtn = document.createElement("button");
-  allBtn.className = "category-filter active";
+  allBtn.classList.add("category-filter", "all-filter-btn");
+  if (!anySelected) allBtn.classList.add("active");
   allBtn.textContent = "All";
   allBtn.addEventListener("click", () => {
-    // clear selected for current mode
-    clearSelectedForMode(state.filters.mode);
+    // clear selected for current mode in state
+    clearSelectedForMode(mode);
+    // refresh UI from state (render functions will check state)
     if (state.currentExpandedSection) renderExpandedSection(state.currentExpandedSection);
-      else renderAllStrips();
+    else renderAllStrips();
+    populateTopFilterButtons();
     updateAppliedFiltersUI();
   });
   container.appendChild(allBtn);
 
-  // values depend on mode
+  // Build the list of values depending on mode (as you had)
   let values = [];
-  if (state.filters.mode === "category") {
+  if (mode === "category") {
     values = Array.from(new Set(state.parts.map(p => p.category))).sort();
-  } else if (state.filters.mode === "brand") {
+  } else if (mode === "brand") {
     const set = new Set();
     state.parts.forEach(p => (p.compatibilities||[]).forEach(c => c.brand && set.add(c.brand)));
     values = Array.from(set).sort();
-  } else if (state.filters.mode === "model") {
+  } else if (mode === "model") {
     const set = new Set();
     state.parts.forEach(p => (p.compatibilities||[]).forEach(c => c.model && set.add(c.model)));
     values = Array.from(set).sort();
-  } else if (state.filters.mode === "others") {
-    // tags
+  } else if (mode === "others") {
     values = state.strips.tagList.slice();
   }
 
   values.forEach(v => {
     const btn = document.createElement("button");
-    btn.className = "category-filter";
+    btn.classList.add("category-filter", "other-filter-btn");
     btn.textContent = v;
     btn.dataset.value = v;
+    // mark active according to state
+    const isActive =
+      (mode === "category" && state.filters.selected.category.has(v)) ||
+      (mode === "brand" && state.filters.selected.brand.has(v)) ||
+      (mode === "model" && state.filters.selected.model.has(v)) ||
+      (mode === "others" && state.filters.selected.tags.has(v));
+    if (isActive) btn.classList.add("active");
+
     btn.addEventListener("click", () => {
-      // toggle selection for current mode
-      toggleSelectionForMode(state.filters.mode, v);
-      // refresh UI
+      // Toggle selection in state
+      toggleSelectionForMode(mode, v);
+      // Re-render everything from state
       populateTopFilterButtons();
       if (state.currentExpandedSection) renderExpandedSection(state.currentExpandedSection);
       else renderAllStrips();
-
       updateAppliedFiltersUI();
     });
-    // visually active if selected
-    let active = false;
-    if (state.filters.mode === "category" && state.filters.selected.category.has(v)) active = true;
-    if (state.filters.mode === "brand" && state.filters.selected.brand.has(v)) active = true;
-    if (state.filters.mode === "model" && state.filters.selected.model.has(v)) active = true;
-    if (state.filters.mode === "others" && state.filters.selected.tags.has(v)) active = true;
-    if (active) btn.classList.add("active"); else btn.classList.remove("active");
+
     container.appendChild(btn);
   });
 }
@@ -439,6 +443,9 @@ function clearSelectedForMode(mode) {
   if (mode === "brand") state.filters.selected.brand = new Set();
   if (mode === "model") state.filters.selected.model = new Set();
   if (mode === "others") state.filters.selected.tags = new Set();
+  document.querySelectorAll('.other-filter-btn').forEach((btn)=>{
+   btn.classList.remove("active")
+  })
 }
 
 /* show applied filters chips UI below the categories row */
@@ -474,9 +481,9 @@ function updateAppliedFiltersUI(){
     appliedFiltersContainer.style.display = "none";
     return;
   } else {
+   appliedFiltersContainer.style.display = "block";
     document.querySelector("#see-filters-label").style.display = "inline-flex";
   }
-  appliedFiltersContainer.style.display = "block";
   arr.forEach(item => {
     const b = document.createElement("button");
     b.className = "chip active";
@@ -506,7 +513,6 @@ function mountFilterDropdown() {
   document.body.dataset.filtersMounted = "1";
 
   // ensure filterBtn exists
-  const filterBtn = document.querySelector(".filter-btn"); // update selector if needed
   if (!filterBtn) {
     console.error("mountFilterDropdown: filterBtn not found");
     return;
@@ -523,7 +529,7 @@ function mountFilterDropdown() {
     borderRadius: "8px",
     padding: "8px",
     minWidth: "180px",
-    display: "none" // start hidden
+    display: "none"
   });
   menu.innerHTML = `
     <button class="fm" data-mode="category" style="display:block;padding:8px;border:0;background:transparent;text-align:left">By Category</button>
@@ -536,7 +542,7 @@ function mountFilterDropdown() {
   // helper to position menu under the button
   function positionMenu() {
     const rect = filterBtn.getBoundingClientRect();
-    menu.style.left = `${rect.left + window.scrollX}px`;
+    menu.style.left = `${rect.left + window.scrollX - 150}px`;
     menu.style.top = `${rect.bottom + window.scrollY + 8}px`;
   }
 
@@ -1118,7 +1124,7 @@ function attachGlobalHandlers() {
 
   // populate top filter buttons initially
   buildStripsMapping();
-  populateTopFilterButtons();
+  //populateTopFilterButtons();
   mountAppliedFiltersUI();
 
   // search input
