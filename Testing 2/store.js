@@ -1033,7 +1033,7 @@ function renderCartItems() {
       <div style="text-align:right">
         <div style="font-weight:800">${formatCurrency(it.price)}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:flex-end">
-          <button class="qty-decrease" data-idx="${idx}">−</button>
+          <button class="qty-decrease" data-idx="${idx}">Remove Item</button>
           <div style="min-width:28px;text-align:center">${it.qty}</div>
           <button class="qty-increase" data-idx="${idx}">+</button>
         </div>
@@ -1043,15 +1043,24 @@ function renderCartItems() {
   });
   container.querySelectorAll(".qty-decrease").forEach(b => b.addEventListener("click", () => {
     const i = Number(b.dataset.idx);
+    /*
     if (state.cart.items[i]) {
       if (state.cart.items[i].qty > 1) state.cart.items[i].qty--;
       else state.cart.items.splice(i,1);
       persistCart(); renderCartItems(); updateCartUI();
     }
+      */
+    if (state.cart.items[i]) {
+      state.cart.items.splice(i,1);
+      persistCart(); renderCartItems(); updateCartUI();
+    }
   }));
   container.querySelectorAll(".qty-increase").forEach(b => b.addEventListener("click", () => {
     const i = Number(b.dataset.idx);
-    state.cart.items[i].qty++; persistCart(); renderCartItems(); updateCartUI();
+    //let newQty = prompt("Enter new quantity:")
+    //if (newQty === null) alert("Enter a number please"); // cancelled
+    state.cart.items[i].qty++; 
+    persistCart(); renderCartItems(); updateCartUI();
   }));
   const total = state.cart.items.reduce((s,it) => s + it.qty * it.price, 0);
   const count = state.cart.items.reduce((s,it) => s + it.qty, 0);
