@@ -7,7 +7,7 @@
 
 import {storeData} from "./data.js"
 
-const BUSSINESS_WHATSAPP = "+2348012345678"; // <-- REPLACE with your number
+const BUSSINESS_WHATSAPP = "+237692521155"; // <-- REPLACE with your number
 const STORE_SESSION_CART_KEY = "manny_store_cart_v1";
 
 /* =========================
@@ -748,18 +748,35 @@ function openDetailsModalForPart(partId, opts = {}) {
   const part = state.parts.find(p => String(p.id) === String(partId));
   if (!part) return;
   const panel = detailsModal.querySelector(".modal-panel");
-  panel.innerHTML = ""; // rebuild
+  if (!panel) return;
+
+  // Build the same structure you used previously but inject a compact carousel in the image slot.
   panel.innerHTML = `
     <div class="modal-header">
       <h2 class="modal-title">${escapeHtml(part.name)}</h2>
       <button class="modal-close" type="button" aria-label="Close product details">✕</button>
     </div>
+
     <div class="details-body">
-      <div class="details-thumb"><img src="${escapeHtml(part.image)}" alt="${escapeHtml(part.name)}"></div>
+      <div class="details-thumb" style="position:relative">
+        <!-- carousel container (keeps same image dimensions as before) -->
+        <div class="detail-carousel" style="position:relative; width:100%; max-width:100%; overflow:hidden; border-radius:8px;">
+          <button class="img-prev" aria-label="Previous image" type="button"
+            style="position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:3;border-radius:999px;padding:6px;border:0;background:rgba(255,255,255,0.9);cursor:pointer;">‹</button>
+
+          <img id="detail-main-image" src="" alt="${escapeHtml(part.name)}"
+               style="width:100%;height:300px;object-fit:cover;display:block;border-radius:8px" />
+
+          <button class="img-next" aria-label="Next image" type="button"
+            style="position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:3;border-radius:999px;padding:6px;border:0;background:rgba(255,255,255,0.9);cursor:pointer;">›</button>
+        </div>
+        <div id="image-pagination" style="margin-top:8px;font-size:0.9rem;color:var(--muted)"></div>
+      </div>
+
       <div class="details-info">
         <h3>${escapeHtml(part.name)}</h3>
         <p style="color:var(--muted)">${escapeHtml(part.description)}</p>
-        <div class="details-compat"><strong>Compatibility:</strong> ${ (part.compatibilities || []).map(c => `${c.brand} ${c.model} (${Array.isArray(c.years)?c.years.join(","):c.years})`).join("; ") }</div>
+        <div class="details-compat"><strong>Compatibility:</strong> ${ (part.compatibilities || []).map(c => `${escapeHtml(c.brand)} ${escapeHtml(c.model)} (${Array.isArray(c.years)?c.years.join(","):c.years})`).join("; ") }</div>
         <div class="details-pricing" style="margin-top:8px"><strong>Price range:</strong> ${estimatePriceRange(part)}</div>
 
         <div style="margin-top:12px">
@@ -780,28 +797,79 @@ function openDetailsModalForPart(partId, opts = {}) {
     </div>
   `;
 
-  // populate selects from variants
+  // ---------- Carousel logic (compact, non-invasive) ----------
+  const mainImg = panel.querySelector("#detail-main-image");
+  const prevBtn = panel.querySelector(".img-prev");
+  const nextBtn = panel.querySelector(".img-next");
+  const pagination = panel.querySelector("#image-pagination");
+
+  // Normalize images to array
+  let images = [];
+  if (Array.isArray(part.image) && part.image.length) images = part.image.slice();
+  else if (part.image) images = [part.image];
+  else images = ["https://via.placeholder.com/600x400?text=No+image"];
+
+  let imgIndex = 0;
+  function refreshCarousel() {
+    mainImg.src = images[imgIndex];
+    pagination.textContent = `${imgIndex + 1} of ${images.length}`;
+    // subtle hint for disabled
+    prevBtn.disabled = imgIndex <= 0;
+    nextBtn.disabled = imgIndex >= images.length - 1;
+    prevBtn.style.opacity = prevBtn.disabled ? "0.45" : "1";
+    nextBtn.style.opacity = nextBtn.disabled ? "0.45" : "1";
+  }
+
+  prevBtn.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if (imgIndex > 0) { imgIndex--; refreshCarousel(); }
+  });
+  nextBtn.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if (imgIndex < images.length - 1) { imgIndex++; refreshCarousel(); }
+  });
+
+  // touch swipe (lightweight)
+  let touchStartX = null;
+  mainImg.addEventListener("touchstart", (e) => { if (e.touches && e.touches[0]) touchStartX = e.touches[0].clientX; });
+  mainImg.addEventListener("touchend", (e) => {
+    if (touchStartX === null) return;
+    const touchEndX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : null;
+    if (touchEndX === null) { touchStartX = null; return; }
+    const dx = touchEndX - touchStartX;
+    if (dx > 40 && imgIndex > 0) imgIndex--;
+    else if (dx < -40 && imgIndex < images.length - 1) imgIndex++;
+    refreshCarousel();
+    touchStartX = null;
+  });
+
+  // click advances
+  mainImg.addEventListener("click", () => {
+    if (imgIndex < images.length - 1) { imgIndex++; refreshCarousel(); }
+  });
+
+  refreshCarousel();
+
+  // ---------- selects & variant logic (keeps original behavior) ----------
   const variants = part.variants || [];
   const selBrand = panel.querySelector(".sel-brand");
   const selModel = panel.querySelector(".sel-model");
   const selYear = panel.querySelector(".sel-year");
   const selWarn = panel.querySelector(".sel-warning");
 
-  const brands = unique(variants.map(v => v.brand)).sort();
+  const brands = unique(variants.map(v => v.brand)).filter(Boolean).sort();
   const modelsByBrand = {};
+  const yearsByKey = {};
   variants.forEach(v => {
+    if (!v.brand || !v.model) return;
     if (!modelsByBrand[v.brand]) modelsByBrand[v.brand] = new Set();
     modelsByBrand[v.brand].add(v.model);
+    const key = `${v.brand}___${v.model}`;
+    if (!yearsByKey[key]) yearsByKey[key] = new Set();
+    yearsByKey[key].add(v.year);
   });
   Object.keys(modelsByBrand).forEach(b => modelsByBrand[b] = Array.from(modelsByBrand[b]).sort());
-
-  const yearsByBm = {};
-  variants.forEach(v => {
-    const key = `${v.brand}___${v.model}`;
-    if (!yearsByBm[key]) yearsByBm[key] = new Set();
-    yearsByBm[key].add(v.year);
-  });
-  Object.keys(yearsByBm).forEach(k => yearsByBm[k] = Array.from(yearsByBm[k]).sort());
+  Object.keys(yearsByKey).forEach(k => yearsByKey[k] = Array.from(yearsByKey[k]).sort((a,b)=>a-b));
 
   brands.forEach(b => selBrand.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`));
 
@@ -815,27 +883,26 @@ function openDetailsModalForPart(partId, opts = {}) {
     selYear.innerHTML = `<option value="">Select year</option>`;
     if (!brand || !model) { selYear.style.display = "none"; return; }
     const key = `${brand}___${model}`;
-    (yearsByBm[key]||[]).forEach(y => selYear.insertAdjacentHTML("beforeend", `<option value="${String(y)}">${String(y)}</option>`));
+    (yearsByKey[key]||[]).forEach(y => selYear.insertAdjacentHTML("beforeend", `<option value="${String(y)}">${String(y)}</option>`));
     selYear.style.display = "inline-block";
   }
 
-  // auto-deduce brand/model/year if current global filters narrow to single option
+  // auto-deductions (same helpers you already have)
   const autoBrand = deduceBrandFromFiltersAndPart(part);
   const autoModel = deduceModelFromFiltersAndPart(part, autoBrand);
   const autoYear = deduceYearFromFiltersAndPart(part, autoBrand, autoModel);
 
-  if (autoBrand) { selBrand.value = autoBrand; populateModels(autoBrand); }
+  if (autoBrand) { selBrand.value = autoBrand; populateModels(autoBrand); } else populateModels("");
   if (autoModel) { selModel.value = autoModel; populateYears(selBrand.value, selModel.value); }
   if (autoYear) { selYear.value = String(autoYear); }
 
   selBrand.addEventListener("change", () => { populateModels(selBrand.value); selWarn.textContent = ""; });
   selModel.addEventListener("change", () => { populateYears(selBrand.value, selModel.value); selWarn.textContent = ""; });
 
-  // actions
+  // ---------- action buttons ----------
   panel.querySelectorAll("[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const action = btn.dataset.action;
-      // final values (allow auto-deductions)
       const brand = selBrand.value || deduceBrandFromFiltersAndPart(part);
       const model = selModel.value || deduceModelFromFiltersAndPart(part, brand);
       const year = (selYear.style.display !== "none" && selYear.value) ? selYear.value : deduceYearFromFiltersAndPart(part, brand, model);
@@ -845,21 +912,17 @@ function openDetailsModalForPart(partId, opts = {}) {
         return;
       }
 
-      // find variant
       const chosen = variants.find(v => String(v.brand) === String(brand) && String(v.model) === String(model) && String(v.year) === String(year));
       if (!chosen) { selWarn.textContent = "Variant not available for this selection."; return; }
 
-      if (action === "add") {
-        openConfirmationModal({ part, variant: chosen, action: "add" });
-      } else if (action === "quick-order") {
-        openConfirmationModal({ part, variant: chosen, action: "quick-order" });
-      }
+      if (action === "add") openConfirmationModal({ part, variant: chosen, action: "add" });
+      else if (action === "quick-order") openConfirmationModal({ part, variant: chosen, action: "quick-order" });
     });
   });
 
-  detailsModal.classList.add("show");
-  document.body.classList.add("modal-open");
-}
+  // finally open modal (keeps your modal class styling)
+  openModal(detailsModal);
+}''
 
 /* helper deduction functions (same behavior as requested) */
 function deduceBrandFromFiltersAndPart(part) {
@@ -991,7 +1054,7 @@ function openCartModal() {
           <button class="modal-close" aria-label="Close cart">✕</button>
         </div>
         <div style="display:flex;gap:12px">
-          <div style="flex:1;max-height:60vh;overflow:auto">
+          <div style="flex:1;max-height:60vh;overflow:auto;">
             <div id="cart-items-container"></div>
           </div>
           <div style="width:320px;flex-shrink:0">
@@ -1039,7 +1102,7 @@ function renderCartItems() {
     const row = document.createElement("div");
     row.className = "cart-item";
     row.style.display = "flex";
-    row.style.alignItems = "flex-start";
+     row.style.alignItems = "flex-start";
     row.style.gap = "12px";
     row.style.background = "#fff";
     row.style.padding = "12px";
@@ -1181,19 +1244,20 @@ function renderCartItems() {
 /* WhatsApp message builders */
 function buildWhatsAppMessageForQuickOrder(part, variant, qty=1) {
   return [
-    `Hello, I want to place a quick order on Manny Autos.`,
-    `Part: ${part.name}`,
-    `Variant: ${variant.brand} ${variant.model} — ${variant.year}`,
-    `Qty: ${qty}`,
-    `Price: ${formatCurrency(variant.price)}`,
+    `Hello, I want to place a quick order on Manny Autos. \n`,
+    `Part: ${part.name} \n`,
+    `Variant: ${variant.brand} ${variant.model} — ${variant.year} \n`,
+    `Qty: ${qty} \n`,
+    `Price: ${formatCurrency(variant.price)} \n`,
     ``,
     `Please confirm availability and delivery options.`
   ].join("\n");
 }
+
 function buildWhatsAppMessageForCart() {
-  const lines = ["Hello, I'm ordering the following parts from Manny Autos:"];
+  const lines = ["Hello, I'm ordering the following parts from Manny Autos: \n"];
   state.cart.items.forEach(it => {
-    lines.push(`• ${it.name} — ${it.brand} ${it.model} ${it.year} — ${it.qty} × ${formatCurrency(it.price)} = ${formatCurrency(it.qty * it.price)}`);
+    lines.push(`• ${it.name} — ${it.brand} ${it.model} ${it.year} — ${it.qty} × ${formatCurrency(it.price)} = ${formatCurrency(it.qty * it.price)} \n`);
   });
   const total = state.cart.items.reduce((s,it) => s + it.qty * it.price, 0);
   lines.push("", `Total: ${formatCurrency(total)}`, "", "Please confirm availability and delivery options.");

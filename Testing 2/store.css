@@ -560,3 +560,112 @@ aside#store-sidebar {
  .nav .mobile-cart-btn { display: block; width: 5rem}
  .search-filter { margin-top: 5rem}
 }
+
+
+/* Fix cart modal layout without touching JS or HTML */
+
+/* Make cart item layout stable */
+.cart-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;                 /* adds spacing instead of spacing by force */
+  justify-content: flex-start; 
+}
+
+/* Ensure image stays a stable square */
+.cart-item img {
+  width: 48px;               /* more natural size */
+  height: 48px;
+  object-fit: cover;
+  flex-shrink: 0;            /* prevents the image from shrinking */
+}
+
+/* Make the text and quantity area align nicely */
+.cart-item-info {
+  flex: 1;
+}
+
+/* Quantity area stays aligned and not too wide */
+.item-quantity {
+  width: auto;
+  gap: 8px;
+}
+
+/* Fix modal scroll behavior (so box doesn't compress vertically) */
+.modal-panel {
+  overflow: hidden;          /* remove double scroll */
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-panel > div:last-child {
+  overflow-y: auto;          /* scrolling only on the content, not whole modal */
+}
+
+/* Responsive: when viewport width is smaller than 900px, stack columns */
+@media (max-width: 900px) {
+  .modal-panel > div[style*="display:flex"] {
+    flex-direction: column;
+  }
+
+  .modal-panel > div[style*="width:320px"] {
+    width: 100% !important;
+  }
+}
+
+/* Mobile: place cart image above details to avoid horizontal overflow */
+@media (max-width: 560px) {
+  /* stack item vertically */
+  .cart-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;                 /* vertical spacing between image and details */
+  }
+
+  /* make the image full-width but constrained in height */
+  .cart-item img {
+    width: 100%;
+    height: auto;
+    max-height: 140px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  /* details area becomes block-level and fills width */
+  .cart-item > div {
+    width: 100%;
+  }
+
+  /* allow name/brand lines to wrap instead of overflowing */
+  .cart-item .cart-item > .name,
+  .cart-item .cart-item > .brand,
+  .cart-item .cart-item > .meta,
+  .cart-item .cart-item * {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  /* quantity / actions stack horizontally but can wrap */
+  .item-quantity {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-top: 6px;
+  }
+
+  /* Put Remove button below the quantity area if it's separate */
+  .cart-item .remove-btn {
+    margin-top: 8px;
+    align-self: flex-start;
+  }
+
+  /* Ensure right column (order summary) doesn't force left column compression */
+  .modal-panel > div[style*="display:flex"] {
+    flex-direction: column;
+  }
+  .modal-panel > div[style*="width:320px"] {
+    width: 100% !important;
+  }
+}
