@@ -883,6 +883,7 @@ function deduceYearFromFiltersAndPart(part, brand, model) {
 }
 
 /* Confirmation modal reused (very similar to your previous flow) */
+
 function openConfirmationModal({ part, variant, action }) {
   let conf = document.getElementById("confirm-modal");
   if (!conf) {
@@ -938,15 +939,29 @@ function openConfirmationModal({ part, variant, action }) {
 /* =========================
    Cart functions (same semantics as before)
    ========================= */
-function addToCart(partId, variant, qty=1) {
-  const existing = state.cart.items.find(it => it.partId === Number(partId) && it.brand === variant.brand && it.model === variant.model && String(it.year) === String(variant.year));
-  if (existing) existing.qty = Number(existing.qty) + Number(qty);
-  else {
-    const p = state.parts.find(x => x.id === Number(partId));
+function addToCart(partId, variant, qty = 1) {
+  const existing = state.cart.items.find(it =>
+    it.partId === Number(partId) &&
+    it.brand === variant.brand &&
+    it.model === variant.model &&
+    String(it.year) === String(variant.year)
+  );
+
+  // ensure thumbnail (support both string and array)
+  const p = state.parts.find(x => x.id === Number(partId));
+  let thumb = "";
+  if (p) {
+    if (Array.isArray(p.image) && p.image.length) thumb = p.image[0];
+    else thumb = p.image || "";
+  }
+
+  if (existing) {
+    existing.qty = Number(existing.qty) + Number(qty);
+  } else {
     state.cart.items.push({
       partId: Number(partId),
-      name: p.name,
-      image: p.image,
+      name: p ? p.name : "",
+      image: thumb,          // store single thumbnail for cart view
       brand: variant.brand,
       model: variant.model,
       year: String(variant.year),
@@ -996,14 +1011,19 @@ function openCartModal() {
     cartModal.querySelector(".modal-close").addEventListener("click", () => closeModal(cartModal));
     cartModal.querySelector("#cart-continue").addEventListener("click", () => closeModal(cartModal));
     cartModal.querySelector("#cart-place-order").addEventListener("click", () => {
+     if (state.cart.items.length){
       const msg = buildWhatsAppMessageForCart();
       openWhatsApp(msg);
       closeModal(cartModal);
+     } else {
+      alert("Please add items to cart before ordering")
+     }
     });
   }
   renderCartItems();
   openModal(cartModal);
 }
+
 function renderCartItems() {
   if (!cartModal) return;
   const container = cartModal.querySelector("#cart-items-container");
@@ -1014,56 +1034,144 @@ function renderCartItems() {
     summary.innerHTML = `<div>No items.</div>`;
     return;
   }
+
   state.cart.items.forEach((it, idx) => {
     const row = document.createElement("div");
     row.className = "cart-item";
     row.style.display = "flex";
-    row.style.alignItems = "center";
-    row.style.gap = "8px";
+    row.style.alignItems = "flex-start";
+    row.style.gap = "12px";
     row.style.background = "#fff";
-    row.style.padding = "8px";
+    row.style.padding = "12px";
     row.style.borderRadius = "8px";
-    row.style.marginBottom = "8px";
+    row.style.marginBottom = "10px";
+
+    // left thumbnail
+    const thumbHTML = `<img src="${escapeHtml(it.image || '')}" style="width:72px;height:52px;object-fit:cover;border-radius:6px"/>`;
+
     row.innerHTML = `
-      <img src="${escapeHtml(it.image)}" style="width:64px;height:44px;object-fit:cover;border-radius:6px"/>
+      <div style="flex:0 0 auto">${thumbHTML}</div>
       <div style="flex:1">
         <div style="font-weight:700">${escapeHtml(it.name)}</div>
-        <div style="color:var(--muted);font-size:0.95rem">${escapeHtml(it.brand)} ${escapeHtml(it.model)} — ${escapeHtml(it.year)}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-weight:800">${formatCurrency(it.price)}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:flex-end">
-          <button class="qty-decrease" data-idx="${idx}">Remove Item</button>
-          <div style="min-width:28px;text-align:center">${it.qty}</div>
-          <button class="qty-increase" data-idx="${idx}">+</button>
+        <div style="color:var(--muted);font-size:0.95rem;margin-top:4px">${escapeHtml(it.brand)} ${escapeHtml(it.model)} — ${escapeHtml(it.year)}</div>
+        <div style="margin-top:8px;display:flex;gap:12px;align-items:center;justify-content:flex-start">
+          <div style="font-weight:800">${formatCurrency(it.price)}</div>
+          <div style="min-width:46px;text-align:center;padding:6px 8px;border-radius:8px;background:#f4f6f8">${it.qty}</div>
+          <button class="btn-secondary change-qty-btn" data-idx="${idx}" type="button">Change Qty</button>
         </div>
+
+        <div style="margin-top:8px">
+          <button class="btn-secondary remove-item-btn" data-idx="${idx}" type="button" style="background:#fff;border:1px solid rgba(11,58,111,0.06);color:var(--navy)">Remove Item</button>
+        </div>
+      </div>
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-weight:800">${formatCurrency(it.price * it.qty)}</div>
       </div>
     `;
     container.appendChild(row);
   });
-  container.querySelectorAll(".qty-decrease").forEach(b => b.addEventListener("click", () => {
-    const i = Number(b.dataset.idx);
-    /*
-    if (state.cart.items[i]) {
-      if (state.cart.items[i].qty > 1) state.cart.items[i].qty--;
-      else state.cart.items.splice(i,1);
-      persistCart(); renderCartItems(); updateCartUI();
+  
+ 
+ // modal for changing item quantity in cart
+ function openChangeQtyModal(idx) {
+  if (!Number.isFinite(idx) || !state.cart.items[idx]) return;
+  let modal = document.getElementById("change-qty-modal");
+  const item = state.cart.items[idx];
+
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "change-qty-modal";
+    modal.className = "modal";
+    modal.innerHTML = `
+      <div class="modal-panel" style="max-width:420px;padding:16px">
+        <div class="modal-header">
+          <h3 class="modal-title">Change quantity</h3>
+          <button class="modal-close" aria-label="Close">✕</button>
+        </div>
+        <div style="padding:8px 0">
+          <div style="display:flex;gap:12px;align-items:center">
+            <img id="chg-qty-thumb" src="" style="width:84px;height:60px;object-fit:cover;border-radius:6px"/>
+            <div>
+              <div id="chg-qty-name" style="font-weight:700"></div>
+              <div id="chg-qty-variant" style="color:var(--muted);font-size:0.95rem;margin-top:6px"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label style="display:block;margin-bottom:6px">New quantity</label>
+            <input id="chg-qty-input" type="number" min="1" step="1" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e6" />
+            <div id="chg-qty-error" style="color:#c0392b;margin-top:6px;display:none;font-size:0.9rem"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn-secondary" data-action="cancel">Cancel</button>
+          <button class="btn-order" data-action="save">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    // close handlers
+    modal.querySelector(".modal-close").addEventListener("click", () => closeModal(modal));
+    modal.querySelector("[data-action='cancel']").addEventListener("click", () => closeModal(modal));
+  }
+
+  // populate values
+  modal.querySelector("#chg-qty-thumb").src = escapeHtml(item.image || "");
+  modal.querySelector("#chg-qty-name").textContent = item.name || "";
+  modal.querySelector("#chg-qty-variant").textContent = `${item.brand} ${item.model} — ${item.year}`;
+  const input = modal.querySelector("#chg-qty-input");
+  const err = modal.querySelector("#chg-qty-error");
+  input.value = String(item.qty);
+  err.style.display = "none";
+
+  // remove previous save handler (avoid duplicates)
+  const saveBtn = modal.querySelector("[data-action='save']");
+  const newSave = () => {
+    const val = Number(input.value);
+    if (!Number.isInteger(val) || val < 1) {
+      err.textContent = "Enter a valid quantity (1 or more).";
+      err.style.display = "block";
+      return;
     }
-      */
-    if (state.cart.items[i]) {
-      state.cart.items.splice(i,1);
-      persistCart(); renderCartItems(); updateCartUI();
-    }
-  }));
-  container.querySelectorAll(".qty-increase").forEach(b => b.addEventListener("click", () => {
-    const i = Number(b.dataset.idx);
-    //let newQty = prompt("Enter new quantity:")
-    //if (newQty === null) alert("Enter a number please"); // cancelled
-    state.cart.items[i].qty++; 
-    persistCart(); renderCartItems(); updateCartUI();
-  }));
-  const total = state.cart.items.reduce((s,it) => s + it.qty * it.price, 0);
-  const count = state.cart.items.reduce((s,it) => s + it.qty, 0);
+    // update
+    state.cart.items[idx].qty = val;
+    persistCart();
+    renderCartItems();
+    updateCartUI();
+    closeModal(modal);
+  };
+  // replace click
+  const newSaveClone = saveBtn.cloneNode(true);
+  saveBtn.parentNode.replaceChild(newSaveClone, saveBtn);
+  newSaveClone.addEventListener("click", newSave);
+
+  openModal(modal);
+}
+
+  // hookup handlers
+  container.querySelectorAll(".remove-item-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      const i = Number(b.dataset.idx);
+      if (Number.isFinite(i) && state.cart.items[i]) {
+        state.cart.items.splice(i, 1);
+        persistCart();
+        renderCartItems();
+        updateCartUI();
+      }
+    });
+  });
+
+  container.querySelectorAll(".change-qty-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      const i = Number(b.dataset.idx);
+      openChangeQtyModal(i);
+    });
+  });
+
+  // summary
+  const total = state.cart.items.reduce((s, it) => s + it.qty * it.price, 0);
+  const count = state.cart.items.reduce((s, it) => s + it.qty, 0);
   summary.innerHTML = `
     <div style="display:flex;justify-content:space-between"><span>Items</span><strong>${count}</strong></div>
     <div style="display:flex;justify-content:space-between;margin-top:8px"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
