@@ -1039,7 +1039,7 @@ function renderCartItems() {
     const row = document.createElement("div");
     row.className = "cart-item";
     row.style.display = "flex";
-    row.style.alignItems = "flex-start";
+     row.style.alignItems = "flex-start";
     row.style.gap = "12px";
     row.style.background = "#fff";
     row.style.padding = "12px";
@@ -1181,19 +1181,20 @@ function renderCartItems() {
 /* WhatsApp message builders */
 function buildWhatsAppMessageForQuickOrder(part, variant, qty=1) {
   return [
-    `Hello, I want to place a quick order on Manny Autos.`,
-    `Part: ${part.name}`,
-    `Variant: ${variant.brand} ${variant.model} — ${variant.year}`,
-    `Qty: ${qty}`,
-    `Price: ${formatCurrency(variant.price)}`,
+    `Hello, I want to place a quick order on Manny Autos. \n`,
+    `Part: ${part.name} \n`,
+    `Variant: ${variant.brand} ${variant.model} — ${variant.year} \n`,
+    `Qty: ${qty} \n`,
+    `Price: ${formatCurrency(variant.price)} \n`,
     ``,
     `Please confirm availability and delivery options.`
   ].join("\n");
 }
+
 function buildWhatsAppMessageForCart() {
-  const lines = ["Hello, I'm ordering the following parts from Manny Autos:"];
+  const lines = ["Hello, I'm ordering the following parts from Manny Autos: \n"];
   state.cart.items.forEach(it => {
-    lines.push(`• ${it.name} — ${it.brand} ${it.model} ${it.year} — ${it.qty} × ${formatCurrency(it.price)} = ${formatCurrency(it.qty * it.price)}`);
+    lines.push(`• ${it.name} — ${it.brand} ${it.model} ${it.year} — ${it.qty} × ${formatCurrency(it.price)} = ${formatCurrency(it.qty * it.price)} \n`);
   });
   const total = state.cart.items.reduce((s,it) => s + it.qty * it.price, 0);
   lines.push("", `Total: ${formatCurrency(total)}`, "", "Please confirm availability and delivery options.");
