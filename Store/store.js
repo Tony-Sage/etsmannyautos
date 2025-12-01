@@ -7,7 +7,7 @@
 
 import {storeData} from "./data.js"
 
-const BUSSINESS_WHATSAPP = "+2348012345678"; // <-- REPLACE with your number
+const BUSSINESS_WHATSAPP = "+237692521155"; // <-- REPLACE with your number
 const STORE_SESSION_CART_KEY = "manny_store_cart_v1";
 
 /* =========================
