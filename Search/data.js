@@ -1,45 +1,44 @@
 // data.js
 
-export const mergedAutoParts = [
-  /* 1 */
-  {
-    id: 1,
-    name: "Ceramic Brake Pad Set",
-    image: "../images/brake pads.jpg",
-    description: "High-friction ceramic pads — quiet, long life, low dust.",
-    category: "Engine Parts",
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
-      { brand: "Honda", model: "Civic", years: [2014,2015] }
-    ],
-    oem: [],
-    price: 9500,
-    availability: "In stock",
-    variants: [
-      { brand: "Toyota", model: "Corolla", year: 2010, price: 9500, availability: "In stock" },
-      { brand: "Toyota", model: "Corolla", year: 2011, price: 10000, availability: "In stock" },
-      { brand: "Honda", model: "Civic", year: 2014, price: 12000, availability: "Low stock" },
-      { brand: "Honda", model: "Civic", year: 2015, price: 11500, availability: "Low stock" }
-    ],
-    general: {
-      partType: "Ceramic brake pad set",
-      whatItDoes: "Provides friction surface to stop the vehicle, reducing noise and wear.",
-      category: "Engine Parts",
-      compatibilitySummary: "Compatible with select Toyota and Honda models (see full compatibility list).",
-      priceRange: "9500 - 12000",
-      availability: "Varies by variant"
-    },
-    specs: {
-      material: "Ceramic composite",
-      technology: "Low-dust friction compound",
-      performance: "Quiet operation, long life",
-      heatToleranceCategory: "Medium-High",
-      expectedLifespanCategory: "Medium to long under normal driving",
-      installationPosition: "Front/Rear depending on vehicle",
-      partClass: "Aftermarket / Premium",
-      finish: "Coated friction surface"
-    }
-  },
+export const autoParts = [
+  // {
+  //   id: 1,
+  //   name: "Ceramic Brake Pad Set",
+  //   image: "../images/brake pads.jpg",
+  //   description: "High-friction ceramic pads — quiet, long life, low dust.",
+  //   category: "Engine Parts",
+  //   compatibilities: [
+  //     { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
+  //     { brand: "Honda", model: "Civic", years: [2014,2015] }
+  //   ],
+  //   oem: [],
+  //   price: 9500,
+  //   availability: "In stock",
+  //   variants: [
+  //     { brand: "Toyota", model: "Corolla", year: 2010, price: 9500, availability: "In stock" },
+  //     { brand: "Toyota", model: "Corolla", year: 2011, price: 10000, availability: "In stock" },
+  //     { brand: "Honda", model: "Civic", year: 2014, price: 12000, availability: "Low stock" },
+  //     { brand: "Honda", model: "Civic", year: 2015, price: 11500, availability: "Low stock" }
+  //   ],
+  //   general: {
+  //     partType: "Ceramic brake pad set",
+  //     whatItDoes: "Provides friction surface to stop the vehicle, reducing noise and wear.",
+  //     category: "Engine Parts",
+  //     compatibilitySummary: "Compatible with select Toyota and Honda models (see full compatibility list).",
+  //     priceRange: "9500 - 12000",
+  //     availability: "Varies by variant"
+  //   },
+  //   specs: {
+  //     material: "Ceramic composite",
+  //     technology: "Low-dust friction compound",
+  //     performance: "Quiet operation, long life",
+  //     heatToleranceCategory: "Medium-High",
+  //     expectedLifespanCategory: "Medium to long under normal driving",
+  //     installationPosition: "Front/Rear depending on vehicle",
+  //     partClass: "Aftermarket / Premium",
+  //     finish: "Coated friction surface"
+  //   }
+  // },
 
   /* 2 */
   {
@@ -121,7 +120,7 @@ export const mergedAutoParts = [
   {
     id: 4,
     name: "Panel Air Filter",
-    image: "../images/shaft heads.jpg",
+    image: ["../images/shaft heads.jpg", "../images/air filter 2.jpg", "../images/air filter 3.jpg"],
     description: "High-capacity air filter for improved engine breathing.",
     category: "Engine Accessories",
     compatibilities: [
@@ -197,7 +196,7 @@ export const mergedAutoParts = [
   {
     id: 6,
     name: "High-Durability Timing Belt",
-    image: "../images/timing belt.jpg",
+    image: ["../images/timing belt.jpg", "../images/timing belt 2.jpg"],
     description: "Reinforced timing belt with heat-stable compound.",
     category: "Engine Accessories",
     compatibilities: [
@@ -539,7 +538,7 @@ export const mergedAutoParts = [
   {
     id: 15,
     name: "Brake Disc (Ventilated)",
-    image: "../images/brake-disc.jpg",
+    image: ["../images/brake disc.jpg", "../images/brake disc 2.jpg"],
     description: "Ventilated front brake disc for improved cooling.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -729,7 +728,7 @@ export const mergedAutoParts = [
   {
     id: 20,
     name: "Steering Rack",
-    image: "../images/steering rack.jpg",
+    image: ["../images/steering rack.jpg", "../images/steering rack 2.jpg"],
     description: "Precision steering rack assembly for smooth steering response and long service life.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -806,7 +805,7 @@ export const mergedAutoParts = [
   {
     id: 22,
     name: "Basket Bearing (Wheel Bearing)",
-    image: "../images/basket bearing.jpg",
+    image: ["../images/basket bearing.jpg", "../images/basket bearing 2.jpg"],
     description: "Durable wheel bearing (basket style) to ensure smooth wheel rotation and longevity.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -844,7 +843,7 @@ export const mergedAutoParts = [
   {
     id: 23,
     name: "Hub Assembly",
-    image: "../images/hubs.jpg",
+    image: "../images/hub.jpg",
     description: "Complete hub assembly with flange for secure wheel mounting and reliable operation.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -957,49 +956,49 @@ export const mergedAutoParts = [
   },
 
   /* 26 */
-  {
-    id: 26,
-    name: "Brake Disc",
-    image: "../images/brake disc.jpg",
-    description: "Ventilated front brake disc engineered for reliable stopping power and reduced fade.",
-    category: "Chassis Accessories",
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: "2008–2013" },
-      { brand: "Honda", model: "Civic", years: "2006–2011" },
-      { brand: "Nissan", model: "Sentra", years: "2007–2012" }
-    ],
-    oem: ["43512-02130", "43512-02131"],
-    price: 18500,
-    availability: "In Stock",
-    variants: [
-      // storeData had a ventilated brake-disc entry (id:15) — we included that as separate item above,
-      // but keep Brake Disc here with its autoParts-derived variants (if store provides any matching variants they would be added; none specifically matched "Brake Disc" exactly in storeData)
-    ],
-    general: {
-      partType: "Ventilated brake disc",
-      whatItDoes: "Provides braking surface for the brake pads; dissipates heat to reduce fade during heavy use.",
-      category: "Chassis Accessories",
-      compatibilitySummary: "Compatible with select Toyota, Honda and Nissan models (see full compatibility list).",
-      priceRange: "18500",
-      availability: "In Stock"
-    },
-    specs: {
-      material: "Cast iron (typical)",
-      technology: "Ventilated design for improved cooling",
-      performance: "Standard (street) performance",
-      heatToleranceCategory: "High",
-      expectedLifespanCategory: "Long",
-      installationPosition: "Front",
-      partClass: "OEM/Aftermarket compatible",
-      finish: "Machined surface"
-    }
-  },
+  // {
+  //   id: 26,
+  //   name: "Brake Disc",
+  //   image: "../images/brake disc.jpg",
+  //   description: "Ventilated front brake disc engineered for reliable stopping power and reduced fade.",
+  //   category: "Chassis Accessories",
+  //   compatibilities: [
+  //     { brand: "Toyota", model: "Corolla", years: "2008–2013" },
+  //     { brand: "Honda", model: "Civic", years: "2006–2011" },
+  //     { brand: "Nissan", model: "Sentra", years: "2007–2012" }
+  //   ],
+  //   oem: ["43512-02130", "43512-02131"],
+  //   price: 18500,
+  //   availability: "In Stock",
+  //   variants: [
+  //     // storeData had a ventilated brake-disc entry (id:15) — we included that as separate item above,
+  //     // but keep Brake Disc here with its autoParts-derived variants (if store provides any matching variants they would be added; none specifically matched "Brake Disc" exactly in storeData)
+  //   ],
+  //   general: {
+  //     partType: "Ventilated brake disc",
+  //     whatItDoes: "Provides braking surface for the brake pads; dissipates heat to reduce fade during heavy use.",
+  //     category: "Chassis Accessories",
+  //     compatibilitySummary: "Compatible with select Toyota, Honda and Nissan models (see full compatibility list).",
+  //     priceRange: "18500",
+  //     availability: "In Stock"
+  //   },
+  //   specs: {
+  //     material: "Cast iron (typical)",
+  //     technology: "Ventilated design for improved cooling",
+  //     performance: "Standard (street) performance",
+  //     heatToleranceCategory: "High",
+  //     expectedLifespanCategory: "Long",
+  //     installationPosition: "Front",
+  //     partClass: "OEM/Aftermarket compatible",
+  //     finish: "Machined surface"
+  //   }
+  // },
 
   /* 27 */
   {
     id: 27,
     name: "Ball Joint",
-    image: "../images/ball joint.jpg",
+    image: ["../images/ball joint.jpg", "../images/ball joint 2.jpg"],
     description: "Forged ball joint for reliable steering geometry and long-lasting durability.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -1037,7 +1036,7 @@ export const mergedAutoParts = [
   {
     id: 28,
     name: "Center Bearing",
-    image: "../images/center bearing.jpg",
+    image: ["../images/center bearing.jpg", "../images/center bearing 2.jpg"],
     description: "Center support bearing for multi-piece drive shafts to reduce vibration and wear.",
     category: "Engine Accessories",
     compatibilities: [
@@ -1189,7 +1188,7 @@ export const mergedAutoParts = [
   {
     id: 32,
     name: "Arm Bushing",
-    image: "../images/arm bushing.jpg",
+    image: ["../images/arm bushing.jpg", "../images/arm bushing 2.jpg"],
     description: "Polyurethane control arm bushing for improved handling and reduced play.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -1265,7 +1264,7 @@ export const mergedAutoParts = [
   {
     id: 34,
     name: "Stabilizer Rubber (Anti-roll Bush)",
-    image: "../images/stabilizer rubber.jpg",
+    image: ["../images/stabilizer rubber.jpg", "../images/stabilizer rubber 2.jpg"],
     description: "Rubber stabilizer bush to reduce sway and maintain handling stability.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -1303,7 +1302,7 @@ export const mergedAutoParts = [
   {
     id: 35,
     name: "Linkage (Steering Linkage)",
-    image: "../images/linkage.jpg",
+    image: ["../images/linkage.jpg", "../images/linkage 2.jpg"],
     description: "Steering linkage/component to maintain precise wheel alignment and steering feel.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -1341,7 +1340,7 @@ export const mergedAutoParts = [
   {
     id: 36,
     name: "Tie Rod End",
-    image: "../images/tie rod end.jpg",
+    image: ["../images/tie rod end.jpg", "../images/tie rod end 2.jpg"],
     description: "Adjustable tie rod end for secure steering linkage and precise toe settings.",
     category: "Chassis Accessories",
     compatibilities: [
@@ -1379,7 +1378,7 @@ export const mergedAutoParts = [
   {
     id: 37,
     name: "Tie Rod Socket (Outer Socket)",
-    image: "../images/tie rod socket.jpg",
+    image: ["../images/tie rod socket.jpg", "../images/tie rod socket 2.jpg"],
     description: "Outer tie rod socket for secure connection between steering rack and wheel assembly.",
     category: "Chassis Accessories",
     compatibilities: [

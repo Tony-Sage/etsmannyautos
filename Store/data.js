@@ -1,25 +1,25 @@
 // storeData — 20 items (categories constrained to the five primary categories)
 export const storeData = [
-  {
-    id: 1,
-    name: "Ceramic Brake Pad Set",
-    slug: "ceramic-brake-pad-set",
-    description: "High-friction ceramic pads — quiet, long life, low dust.",
-    image: "../images/brake pads.jpg",
-    category: " Engine Parts",
-    tracks: ["featured", "chassis", "brakes"],
-    tags: ["ceramic"],
-    compatibilities: [
-      { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
-      { brand: "Honda", model: "Civic", years: [2014,2015] }
-    ],
-    variants: [
-      { brand: "Toyota", model: "Corolla", year: 2010, price: 9500, availability: "In stock" },
-      { brand: "Toyota", model: "Corolla", year: 2011, price: 10000, availability: "In stock" },
-      { brand: "Honda", model: "Civic", year: 2014, price: 12000, availability: "Low stock" },
-      { brand: "Honda", model: "Civic", year: 2015, price: 11500, availability: "Low stock" }
-    ]
-  },
+  // {
+  //   id: 1,
+  //   name: "Ceramic Brake Pad Set",
+  //   slug: "ceramic-brake-pad-set",
+  //   description: "High-friction ceramic pads — quiet, long life, low dust.",
+  //   image: "../images/brake pads.jpg",
+  //   category: " Engine Parts",
+  //   tracks: ["featured", "chassis", "brakes"],
+  //   tags: ["ceramic"],
+  //   compatibilities: [
+  //     { brand: "Toyota", model: "Corolla", years: [2010,2011,2012] },
+  //     { brand: "Honda", model: "Civic", years: [2014,2015] }
+  //   ],
+  //   variants: [
+  //     { brand: "Toyota", model: "Corolla", year: 2010, price: 9500, availability: "In stock" },
+  //     { brand: "Toyota", model: "Corolla", year: 2011, price: 10000, availability: "In stock" },
+  //     { brand: "Honda", model: "Civic", year: 2014, price: 12000, availability: "Low stock" },
+  //     { brand: "Honda", model: "Civic", year: 2015, price: 11500, availability: "Low stock" }
+  //   ]
+  // },
 
   {
     id: 2,
