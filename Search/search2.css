@@ -403,3 +403,12 @@ body.modal-open {
 .quick-order-panel .btn-secondary:hover {
   background-color: #e1e5ea;
 }
+
+
+@media (min-width: 450px){
+ .general-grid {
+   display:grid;
+   grid-template-columns:1fr 1fr;
+   gap:12px;
+ }
+}

@@ -13,7 +13,7 @@ import { autoParts, carData } from "./data.js"; // ensure data.js exports both
    Config & constants
    ========================= */
 const PAGE_SIZE = 10;
-const WHATSAPP_PHONE = ""; // set if you want default WA number
+const WHATSAPP_PHONE = "+237692521155";
 const INSTRUCTION_SHOWN_KEY = "manny_instruction_shown_session";
 const STORE_OPEN_KEY = "manny_store_open_part";
 
@@ -217,7 +217,7 @@ function createResultCard(part) {
       <p class="card-desc">${escapeHtml(part.description || "")}</p>
       <div class="card-meta">
         <span class="availability ${availabilityClass(part.availability)}">${escapeHtml(part.availability || "")}</span>
-        <span class="price">₦${formatNumber(part.price || 0)}</span>
+        <span class="price">${formatNumber(part.price || 0)} FCFA</span>
       </div>
     </div>
   `;
@@ -479,14 +479,14 @@ function openDetailsModalForPart(partId) {
 
       <div class="tab-contents" style="width:100%;margin-top:12px;">
         <div class="tab-pane" data-tab="general" style="display:block">
-          <div class="general-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="general-grid">
             <div class="image-panel" style="border-radius:8px;overflow:hidden;background:#f5f7fa;">
               <!-- image slot populated below -->
             </div>
             <div class="general-info" style="display:flex;flex-direction:column;gap:8px;">
               <div class="gi-desc" style="color:#0B2A44">${escapeHtml(part.description || "")}</div>
               <div><strong>Availability:</strong> <span class="${availabilityClass(part.availability)}">${escapeHtml(part.availability || "")}</span></div>
-              <div><strong>Price:</strong> ₦${formatNumber(part.price || 0)}</div>
+              <div><strong>Price:</strong> ${formatNumber(part.price || 0)} FCFA</div>
               <div class="more-general"></div>
             </div>
           </div>
@@ -719,7 +719,7 @@ body.querySelector(".quick-order")?.addEventListener("click", () => {
       `Part: ${part.name} \n`,
       `Variant: ${chosen.brand} ${chosen.model} — ${chosen.year} \n`,
       `Qty: 1 \n`,
-      `Price: ₦${formatNumber(chosen.price)} \n`,
+      `Price: ${formatNumber(chosen.price)} FCFA \n`,
       ``,
       `Please confirm availability and delivery options.`
     ].join("\n");
