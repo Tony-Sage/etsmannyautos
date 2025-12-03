@@ -408,6 +408,7 @@ if (categoriesGrid) {
     const parts = autoParts.filter(p => normalize(p.category) === normalize(category));
     renderPartsList(parts, category);
     if (categoriesSection) categoriesSection.style.display = "none";
+    identifiersSection.style.display = "block"
     resultsSection.style.display = "";
     resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
   });
@@ -426,8 +427,17 @@ function renderPartsList(parts = [], categoryName = "") {
   resultsSection.innerHTML = "";
   const header = document.createElement("div");
   header.className = "results-header";
-  header.innerHTML = `<h2>Search results (${parts.length})</h2>`;
+  header.innerHTML = `
+   <div>
+    <button class="back-button">« Back</button>
+    <h1>${categoryName}</h1>
+   </div>
+   <h2>Search results (${parts.length})</h2>`;
   resultsSection.appendChild(header);
+  
+  document.querySelector(".back-button").addEventListener("click", ()=>{
+   showCategoryMode()
+  })
 
   if (!parts.length) {
     const noRes = document.createElement("div");
@@ -773,6 +783,8 @@ modeOptions.forEach(btn => {
   btn.addEventListener("click", () => {
     const txt = (btn.textContent || btn.innerText || "").toLowerCase();
     if (txt.includes("category")) showCategoryMode(); else showIdentifiersMode();
+    mobileSidebar.classList.remove("open");
+    mobileSidebar.setAttribute("aria-hidden","true");
   });
 });
 

@@ -9,7 +9,24 @@
   background: transparent;
 }
 
-.results-header h2 {
+.results-header {
+ display: flex;
+ flex-direction: column;
+}
+
+.results-header div {
+ align-self: flex-start;
+ display: flex;
+ gap: 2rem
+}
+
+.back-button {
+ background-color: transparent;
+ border: none;
+ color: #0B3B6F;
+}
+
+.results-header h2, .results-header div {
   color: #0B3B6F;
   font-size: 18px;
   margin-bottom: 12px;
